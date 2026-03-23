@@ -19,6 +19,9 @@ RUN npm install -g agent-browser \
     && (agent-browser install --with-deps 2>/dev/null \
         || (apt-get update && apt-get install -y --no-install-recommends chromium && rm -rf /var/lib/apt/lists/*))
 
+# Claude Code CLI (for Claude model access)
+RUN npm install -g @anthropic-ai/claude-code
+
 # Install nanobot from submodule + Python deps
 COPY nanobot/ /opt/nanobot/
 RUN pip install --no-cache-dir /opt/nanobot/ \

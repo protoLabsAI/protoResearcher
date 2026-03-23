@@ -28,6 +28,8 @@ services:
       - protoresearcher-knowledge:/sandbox/knowledge
       - protoresearcher-audit:/sandbox/audit
       - protoresearcher-papers:/sandbox/papers
+      # Claude OAuth credentials (read-only)
+      - ${HOME}/.claude:/opt/claude-creds:ro
 
     ports:
       - "7870:7870"
@@ -47,6 +49,7 @@ services:
 
     environment:
       - HOME=/home/sandbox
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Langfuse tracing (optional)
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
@@ -97,6 +100,8 @@ services:
       - /home/ava/dev/LLaMA-Factory:/opt/llama-factory:ro
       - /home/ava/dev/lab/training/data:/opt/lab-data:ro
       - /mnt/data/training/researcher:/mnt/data/training/researcher
+      # Claude OAuth credentials (read-only)
+      - ${HOME}/.claude:/opt/claude-creds:ro
 
     ports:
       - "7870:7870"
@@ -119,6 +124,7 @@ services:
 
     environment:
       - HOME=/home/sandbox
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - LAB_GPU=${LAB_GPU:-1}
       - HF_HOME=/mnt/models/huggingface
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
