@@ -390,45 +390,52 @@ class DiscordFeedTool(Tool):
         return "\n".join(lines)
 
     async def _publish(self, kwargs: dict) -> str:
-        """Publish a message to Discord via webhook."""
+        """Publish a message to Discord via webhook. Always uses embeds, chunks if needed."""
         webhook_url = _WEBHOOK_URL
         if not webhook_url:
             return "Error: DISCORD_WEBHOOK_URL not set. Add it to your environment."
 
         content = kwargs.get("content", "")
-        title = kwargs.get("title", "")
+        title = kwargs.get("title", "🔬 Research Update")
 
         if not content:
             return "Error: 'content' is required for publish."
 
-        payload: dict[str, Any] = {
-            "username": "protoResearcher",
-        }
+        # Discord embed description limit is 4096 chars
+        # Split into multiple embeds if content is longer
+        chunks = []
+        remaining = content
+        while remaining:
+            chunks.append(remaining[:4096])
+            remaining = remaining[4096:]
 
-        if title:
-            # Use embed for titled content (4096 char limit)
-            payload["embeds"] = [{
-                "title": title,
-                "description": content[:4096],
+        # Build embeds — first one gets the title, rest are continuations
+        embeds = []
+        for i, chunk in enumerate(chunks):
+            embed: dict[str, Any] = {
+                "description": chunk,
                 "color": 0x14b8a6,
-            }]
-        else:
-            if len(content) <= 2000:
-                payload["content"] = content
-            else:
-                # Embed for longer content
-                payload["embeds"] = [{
-                    "title": "🔬 Research Update",
-                    "description": content[:4096],
-                    "color": 0x14b8a6,
-                }]
+            }
+            if i == 0:
+                embed["title"] = title
+            embeds.append(embed)
 
+        # Discord allows max 10 embeds per message
+        sent = 0
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.post(webhook_url, json=payload)
-                if resp.status_code == 204:
-                    return "Published to Discord."
-                resp.raise_for_status()
-                return "Published to Discord."
+                # Send in batches of 10 embeds
+                for batch_start in range(0, len(embeds), 10):
+                    batch = embeds[batch_start:batch_start + 10]
+                    payload = {
+                        "username": "protoResearcher",
+                        "embeds": batch,
+                    }
+                    resp = await client.post(webhook_url, json=payload)
+                    if resp.status_code not in (200, 204):
+                        return f"Error: Discord returned {resp.status_code} on chunk {batch_start // 10 + 1}"
+                    sent += len(batch)
         except Exception as e:
             return f"Error publishing to Discord: {e}"
+
+        return f"Published to Discord ({sent} embed{'s' if sent > 1 else ''})."
