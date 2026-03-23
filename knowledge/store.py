@@ -42,7 +42,7 @@ class KnowledgeStore:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             import sqlite_vec
 
-            db = sqlite3.connect(str(self.db_path))
+            db = sqlite3.connect(str(self.db_path), check_same_thread=False)
             db.enable_load_extension(True)
             sqlite_vec.load(db)
             db.enable_load_extension(False)
