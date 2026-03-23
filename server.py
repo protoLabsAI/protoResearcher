@@ -29,6 +29,26 @@ _agent = None
 _config = None
 
 
+def _patch_identity():
+    """Replace nanobot's default identity header with protoResearcher branding."""
+    from nanobot.agent.context import ContextBuilder
+
+    _original_get_identity = ContextBuilder._get_identity
+
+    def _patched_get_identity(self):
+        original = _original_get_identity(self)
+        # Replace the nanobot header
+        original = original.replace("# nanobot 🐈", "# protoResearcher 🔬")
+        original = original.replace(
+            "You are nanobot, a helpful AI assistant.",
+            "You are protoResearcher, an autonomous AI research assistant built by protoLabs.",
+        )
+        original = original.replace("## nanobot Guidelines", "## Guidelines")
+        return original
+
+    ContextBuilder._get_identity = _patched_get_identity
+
+
 def _init_agent(config_path: str | None = None):
     """Initialize nanobot agent loop."""
     global _agent, _config
@@ -67,6 +87,9 @@ def _init_agent(config_path: str | None = None):
         mcp_servers=_config.tools.mcp_servers,
         channels_config=_config.channels,
     )
+
+    # Override nanobot's default identity with protoResearcher branding
+    _patch_identity()
 
 
 def _detect_vllm_model(api_base: str) -> str | None:
