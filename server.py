@@ -571,9 +571,12 @@ def _build_settings_callbacks() -> dict:
         model_name = parts[1] if len(parts) > 1 else ""
 
         if provider_type == "local":
+            import litellm
             api_base = _config.get_api_base(_config.agents.defaults.model)
             detected = _detect_vllm_model(api_base) if api_base else None
             model = detected or model_name
+            # Restore global api_base for vLLM
+            litellm.api_base = api_base
 
             p = _config.get_provider(_config.agents.defaults.model)
             provider = LiteLLMProvider(
@@ -585,9 +588,13 @@ def _build_settings_callbacks() -> dict:
             )
         elif provider_type == "claude":
             import os
+            import litellm
             api_key = os.environ.get("ANTHROPIC_API_KEY", "")
             if not api_key:
                 return "**Error:** No Anthropic credentials found."
+            # Clear global api_base set by vLLM provider — otherwise litellm
+            # sends Anthropic requests to the vLLM endpoint
+            litellm.api_base = None
             provider = LiteLLMProvider(
                 api_key=api_key,
                 api_base=None,
