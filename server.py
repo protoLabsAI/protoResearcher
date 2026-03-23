@@ -539,6 +539,9 @@ _message_tool_content: contextvars.ContextVar[list[str]] = contextvars.ContextVa
 )
 
 
+import queue as _queue_mod
+
+
 async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
     """Process a message through nanobot's agent loop."""
     stripped = message.strip()
@@ -597,6 +600,88 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
         tracing.end_trace()
         _current_session_id.reset(token)
         _message_tool_content.reset(msg_token)
+
+
+def chat_streaming(message: str, history: list[dict], session_id: str):
+    """Streaming wrapper — yields incremental history updates as tools run."""
+    import threading
+
+    result_queue: _queue_mod.Queue = _queue_mod.Queue()
+    progress_so_far: list[dict] = []
+
+    original_chat = chat
+
+    async def _run():
+        try:
+            result = await original_chat(message, session_id)
+            result_queue.put(("done", result))
+        except Exception as e:
+            result_queue.put(("error", str(e)))
+
+    # Run agent in a background thread
+    def _thread():
+        asyncio.run(_run())
+
+    t = threading.Thread(target=_thread, daemon=True)
+    t.start()
+
+    # Poll for progress and yield updates
+    placeholder_shown = False
+    while t.is_alive():
+        try:
+            status, data = result_queue.get(timeout=0.5)
+            if status == "done":
+                for msg in data:
+                    meta = msg.get("metadata", {})
+                    if meta.get("_clear"):
+                        yield [], session_id
+                        return
+                    if meta.get("_new"):
+                        import secrets as _s
+                        yield [], _s.token_hex(4)
+                        return
+                history.extend(data)
+                yield history, session_id
+                return
+            elif status == "error":
+                history.append({"role": "assistant", "content": f"**Error:** {data}"})
+                yield history, session_id
+                return
+        except _queue_mod.Empty:
+            # Show a working indicator if nothing yet
+            if not placeholder_shown:
+                history.append({
+                    "role": "assistant",
+                    "metadata": {"title": "🔬 Working..."},
+                    "content": "",
+                })
+                placeholder_shown = True
+                yield history, session_id
+
+    # Thread finished, get final result
+    try:
+        status, data = result_queue.get_nowait()
+        if placeholder_shown:
+            history.pop()  # remove working indicator
+        if status == "done":
+            for msg in data:
+                meta = msg.get("metadata", {})
+                if meta.get("_clear"):
+                    yield [], session_id
+                    return
+                if meta.get("_new"):
+                    import secrets as _s
+                    yield [], _s.token_hex(4)
+                    return
+            history.extend(data)
+        elif status == "error":
+            history.append({"role": "assistant", "content": f"**Error:** {data}"})
+    except _queue_mod.Empty:
+        if placeholder_shown:
+            history.pop()
+        history.append({"role": "assistant", "content": "*Task completed.*"})
+
+    yield history, session_id
 
 
 # ---------------------------------------------------------------------------
@@ -793,6 +878,7 @@ def _main():
 
     blocks = create_chat_app(
         chat_fn=chat,
+        streaming_chat_fn=chat_streaming,
         title="🔬 protoResearcher",
         subtitle="",
         placeholder="Ask me about the latest in AI research...",

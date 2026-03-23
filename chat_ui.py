@@ -160,6 +160,7 @@ if ('serviceWorker' in navigator) {
 """
 
 ChatFn = Callable[[str, str], Awaitable[list[dict]]]
+StreamingChatFn = Callable[..., Any]  # generator function
 SettingsCallbacks = dict[str, Any]
 
 
@@ -173,6 +174,7 @@ def create_chat_app(
     extra_css: str = "",
     settings: SettingsCallbacks | None = None,
     pwa: bool = True,
+    streaming_chat_fn: StreamingChatFn | None = None,
 ) -> gr.Blocks:
     _theme = gr.themes.Soft(primary_hue="teal", neutral_hue="slate")
     _css = CLEAN_CSS + RESEARCHER_DARK_CSS + extra_css
@@ -279,18 +281,27 @@ def create_chat_app(
                 history.append({"role": "user", "content": message})
                 return "", history, message
 
-            def get_response(history: list[dict], original_msg: str, sid: str):
-                if not original_msg.strip():
+            if streaming_chat_fn:
+                # Streaming mode — yields incremental updates as tools run
+                def get_response(history: list[dict], original_msg: str, sid: str):
+                    if not original_msg.strip():
+                        yield history, sid
+                        return
+                    yield from streaming_chat_fn(original_msg, history, sid)
+            else:
+                # Blocking mode — waits for full response
+                def get_response(history: list[dict], original_msg: str, sid: str):
+                    if not original_msg.strip():
+                        return history, sid
+                    result = asyncio.run(chat_fn(original_msg, sid))
+                    for msg in result:
+                        meta = msg.get("metadata", {})
+                        if meta.get("_clear"):
+                            return [], sid
+                        if meta.get("_new"):
+                            return [], secrets.token_hex(4)
+                    history.extend(result)
                     return history, sid
-                result = asyncio.run(chat_fn(original_msg, sid))
-                for msg in result:
-                    meta = msg.get("metadata", {})
-                    if meta.get("_clear"):
-                        return [], sid
-                    if meta.get("_new"):
-                        return [], secrets.token_hex(4)
-                history.extend(result)
-                return history, sid
 
             pending_msg = gr.State("")
 

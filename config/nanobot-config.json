@@ -7,7 +7,7 @@
       "maxTokens": 4096,
       "contextWindowTokens": 262144,
       "temperature": 0.3,
-      "maxToolIterations": 25,
+      "maxToolIterations": 75,
       "reasoningEffort": null
     }
   },
