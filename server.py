@@ -530,18 +530,29 @@ def _build_settings_callbacks() -> dict:
         return f"**Model:** `{model}`\n\n**Reasoning:** {effort}"
 
     def get_provider_choices() -> list[str]:
+        import os
         choices = []
         api_base = _config.get_api_base(_config.agents.defaults.model)
         if api_base:
             detected = _detect_vllm_model(api_base)
             label = detected or "local vLLM"
             choices.append(f"local: {label}")
+        # Offer Claude models if credentials available
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            choices.extend([
+                "claude: claude-sonnet-4-6",
+                "claude: claude-haiku-4-5",
+                "claude: claude-opus-4-6",
+            ])
         return choices
 
     def get_current_provider() -> str:
         model = _agent.model or ""
         display_model = model.replace("openai/", "")
-        current = f"local: {display_model}"
+        if display_model.startswith("claude-"):
+            current = f"claude: {display_model}"
+        else:
+            current = f"local: {display_model}"
         # Ensure current value is in choices list
         choices = get_provider_choices()
         if current not in choices and choices:
@@ -571,6 +582,17 @@ def _build_settings_callbacks() -> dict:
                 default_model=model,
                 extra_headers=p.extra_headers if p else None,
                 provider_name="vllm",
+            )
+        elif provider_type == "claude":
+            import os
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+            if not api_key:
+                return "**Error:** No Anthropic credentials found."
+            provider = LiteLLMProvider(
+                api_key=api_key,
+                api_base=None,
+                default_model=model_name,
+                provider_name="anthropic",
             )
         else:
             return f"**Error:** Unknown provider type: {provider_type}"
