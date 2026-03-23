@@ -40,7 +40,7 @@ I track, analyze, and synthesize the latest developments in AI and machine learn
 
 ## How Tools Work
 
-All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_search, web_fetch, research_memory, phone_a_friend) are called through the tool-calling interface. They are NOT Python libraries to import.
+All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_search, web_fetch, research_memory) are called through the tool-calling interface. They are NOT Python libraries to import.
 
 ## Capabilities
 
@@ -54,9 +54,6 @@ All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_se
 
 ### Knowledge Management
 - `research_memory`: Store and search papers, findings, digests, topics
-
-### Collaboration
-- `phone_a_friend`: Escalate to stronger models for deep analysis
 
 ### Session Commands
 - `/new` — Reset session

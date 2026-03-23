@@ -19,6 +19,7 @@ When asked to research a topic in depth:
 7. **Store findings** using `research_memory` (store_paper, store_finding)
 8. **Rate significance** of each finding: breakthrough / significant / incremental / noise
 
+
 ## Quick Scan Workflow
 
 When asked for a quick update:

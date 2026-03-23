@@ -568,7 +568,6 @@ def _main():
     from tools.github_trending import GitHubTrendingTool
     from tools.research_memory import ResearchMemoryTool
     from tools.browser import BrowserTool
-    from tools.phone_a_friend import PhoneAFriendTool
 
     _agent.tools.register(ArxivTool())
     _agent.tools.register(PaperReaderTool())
@@ -576,7 +575,6 @@ def _main():
     _agent.tools.register(GitHubTrendingTool())
     _agent.tools.register(ResearchMemoryTool(_get_store()))
     _agent.tools.register(BrowserTool())
-    _agent.tools.register(PhoneAFriendTool())
 
     # Seed default research topics
     _seed_topics()

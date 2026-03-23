@@ -10,7 +10,7 @@ Autonomous AI research agent that tracks the latest developments in AI and machi
 - **Tracks GitHub** trending AI/ML repositories and releases
 - **Stores knowledge** — papers, findings, digests in a semantic knowledge base
 - **Generates digests** — structured research summaries with significance ratings
-- **Escalates** to stronger models (Claude, Ollama) for deep analysis
+- **Browses the web** for blog posts, conference pages, and more
 
 ## Architecture
 
@@ -23,8 +23,7 @@ protoResearcher
 │   ├── huggingface.py    # HF Hub models, datasets, papers
 │   ├── github_trending.py # GitHub search + releases
 │   ├── research_memory.py # Knowledge store tool
-│   ├── browser.py        # Web automation
-│   └── phone_a_friend.py # Multi-provider LLM escalation
+│   └── browser.py        # Web automation
 ├── knowledge/
 │   ├── store.py          # SQLite + sqlite-vec knowledge base
 │   ├── schema.sql        # Database schema
@@ -92,7 +91,7 @@ Requires vLLM running on `localhost:8000` (or configure `config/nanobot-config.j
 - **Knowledge**: SQLite + sqlite-vec (semantic search via Ollama embeddings)
 - **Observability**: Langfuse tracing, Prometheus metrics, JSONL audit
 - **Container**: Docker with seccomp, read-only root, tmpfs workspace
-- **LLM**: vLLM (local) with phone-a-friend escalation to Claude/Ollama
+- **LLM**: vLLM (local, OpenAI-compatible)
 
 ## Part of protoLabs
 
