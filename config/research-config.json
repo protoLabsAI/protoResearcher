@@ -10,7 +10,15 @@
     {"name": "multimodal", "keywords": ["vision-language", "VLM", "multimodal", "image understanding"], "priority": 3}
   ],
   "sources": {
-    "discord": {"channels": [], "scan_interval_hours": 24},
+    "discord": {
+      "channels": [
+        "1469054764833701942",
+        "1471642542540849284",
+        "1469054768675557460",
+        "1469054774338125929"
+      ],
+      "scan_interval_hours": 24
+    },
     "arxiv": {"categories": ["cs.AI", "cs.LG", "cs.CL", "cs.CV"], "scan_interval_hours": 12},
     "huggingface": {"scan_interval_hours": 24},
     "github": {"scan_interval_hours": 168, "topics": ["machine-learning", "deep-learning", "llm"]}
