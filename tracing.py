@@ -1,6 +1,7 @@
 """Langfuse tracing for protoResearcher.
 
-Provides trace/span context managers for LLM calls and tool executions.
+Provides trace/span context for LLM calls and tool executions.
+Compatible with Langfuse 4.x API (start_as_current_observation).
 Falls back silently if Langfuse is not configured.
 """
 
@@ -10,11 +11,11 @@ import contextvars
 import os
 from typing import Any
 
-_trace_ctx: contextvars.ContextVar[Any] = contextvars.ContextVar("_trace_ctx", default=None)
-_span_ctx: contextvars.ContextVar[Any] = contextvars.ContextVar("_span_ctx", default=None)
-
 _langfuse = None
 _enabled = False
+
+# Track current trace ID for audit log cross-referencing
+_trace_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("_trace_id_ctx", default="")
 
 
 def init():
@@ -30,7 +31,9 @@ def init():
 
     try:
         from langfuse import Langfuse
-        _langfuse = Langfuse(public_key=public_key, secret_key=secret_key, host=host)
+        _langfuse = Langfuse(
+            public_key=public_key, secret_key=secret_key, host=host,
+        )
         _enabled = True
         print(f"[tracing] Langfuse initialized -> {host}")
     except ImportError:
@@ -44,21 +47,39 @@ def is_enabled() -> bool:
 
 
 def start_trace(session_id: str, name: str = "researcher-chat", metadata: dict | None = None) -> Any:
+    """Start a new trace for a chat session."""
     if not _enabled:
         return None
-    trace = _langfuse.trace(
-        name=name, session_id=session_id,
-        metadata=metadata or {}, tags=["protoresearcher"],
-    )
-    _trace_ctx.set(trace)
-    return trace
+
+    try:
+        from langfuse import Langfuse
+        trace_id = Langfuse.create_trace_id(seed=session_id)
+        _trace_id_ctx.set(trace_id)
+
+        # Start a root observation that acts as our trace
+        span = _langfuse.start_as_current_observation(
+            name=name,
+            metadata={
+                **(metadata or {}),
+                "session_id": session_id,
+                "tags": ["protoresearcher"],
+            },
+        )
+        return span
+    except Exception as e:
+        print(f"[tracing] start_trace failed: {e}")
+        return None
 
 
 def end_trace():
-    if _enabled and _langfuse:
+    """End the current trace."""
+    if not _enabled:
+        return
+    try:
         _langfuse.flush()
-    _trace_ctx.set(None)
-    _span_ctx.set(None)
+    except Exception:
+        pass
+    _trace_id_ctx.set("")
 
 
 def trace_llm_call(
@@ -68,51 +89,83 @@ def trace_llm_call(
     duration_ms: int = 0, finish_reason: str = "",
     error: str | None = None, metadata: dict | None = None,
 ):
-    trace = _trace_ctx.get(None)
-    if not trace:
+    """Log an LLM call as a generation observation."""
+    if not _enabled:
         return None
-    generation = trace.generation(
-        name="llm-call", model=model, input=messages,
-        output=response_content or "",
-        metadata={
-            **(metadata or {}),
-            "finish_reason": finish_reason,
-            "tool_calls": len(response_tool_calls) if response_tool_calls else 0,
-            **({"error": error} if error else {}),
-        },
-        usage={"input": tokens_input, "output": tokens_output, "total": tokens_input + tokens_output},
-        level="ERROR" if error else "DEFAULT",
-    )
-    _span_ctx.set(generation)
-    return generation
+
+    try:
+        gen = _langfuse.start_observation(
+            name="llm-call",
+            as_type="generation",
+            model=model,
+            input=messages,
+            output=response_content or "",
+            metadata={
+                **(metadata or {}),
+                "finish_reason": finish_reason,
+                "tool_calls": len(response_tool_calls) if response_tool_calls else 0,
+                **({"error": error} if error else {}),
+            },
+            usage_details={
+                "input": tokens_input,
+                "output": tokens_output,
+                "total": tokens_input + tokens_output,
+            },
+            level="ERROR" if error else "DEFAULT",
+        )
+        gen.end()
+        return gen
+    except Exception:
+        return None
 
 
 def trace_tool_call(
     tool_name: str, args: dict, result: str,
     duration_ms: int, success: bool, session_id: str = "",
 ):
-    trace = _trace_ctx.get(None)
-    if not trace:
+    """Log a tool execution as a span observation."""
+    if not _enabled:
         return None
+
     safe_args = {}
     for k, v in (args or {}).items():
         sv = str(v)
         safe_args[k] = sv[:500] if len(sv) > 500 else v
-    return trace.span(
-        name=f"tool:{tool_name}", input=safe_args,
-        output=result[:1000] if result else "",
-        metadata={"duration_ms": duration_ms, "success": success, "session_id": session_id},
-        level="ERROR" if not success else "DEFAULT",
-    )
+
+    try:
+        span = _langfuse.start_observation(
+            name=f"tool:{tool_name}",
+            as_type="tool",
+            input=safe_args,
+            output=result[:1000] if result else "",
+            metadata={
+                "duration_ms": duration_ms,
+                "success": success,
+                "session_id": session_id,
+            },
+            level="ERROR" if not success else "DEFAULT",
+        )
+        span.end()
+        return span
+    except Exception:
+        return None
 
 
 def score_trace(name: str, value: float, comment: str = ""):
-    trace = _trace_ctx.get(None)
-    if not trace:
+    """Score the current trace."""
+    if not _enabled:
         return
-    trace.score(name=name, value=value, comment=comment)
+    try:
+        _langfuse.score_current_trace(
+            name=name, value=value, comment=comment,
+        )
+    except Exception:
+        pass
 
 
 def flush():
     if _enabled and _langfuse:
-        _langfuse.flush()
+        try:
+            _langfuse.flush()
+        except Exception:
+            pass

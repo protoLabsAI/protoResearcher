@@ -513,7 +513,12 @@ def _build_settings_callbacks() -> dict:
     def get_current_provider() -> str:
         model = _agent.model or ""
         display_model = model.replace("openai/", "")
-        return f"local: {display_model}"
+        current = f"local: {display_model}"
+        # Ensure current value is in choices list
+        choices = get_provider_choices()
+        if current not in choices and choices:
+            return choices[0]
+        return current
 
     def switch_provider(choice: str) -> str:
         if not choice:

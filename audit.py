@@ -32,9 +32,7 @@ class AuditLogger:
         trace_id = None
         try:
             import tracing
-            trace = tracing._trace_ctx.get(None)
-            if trace:
-                trace_id = getattr(trace, "id", None)
+            trace_id = tracing._trace_id_ctx.get("") or None
         except Exception:
             pass
 
