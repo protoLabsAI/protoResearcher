@@ -2,8 +2,8 @@
   "agents": {
     "defaults": {
       "workspace": "/sandbox",
-      "model": "auto",
-      "provider": "vllm",
+      "model": "claude-sonnet-4-6",
+      "provider": "anthropic",
       "maxTokens": 4096,
       "contextWindowTokens": 262144,
       "temperature": 0.3,
@@ -16,6 +16,11 @@
     "sendToolHints": true
   },
   "providers": {
+    "anthropic": {
+      "apiKey": "env:ANTHROPIC_API_KEY",
+      "apiBase": null,
+      "extraHeaders": null
+    },
     "vllm": {
       "apiKey": "none",
       "apiBase": "http://host.docker.internal:8000/v1",
