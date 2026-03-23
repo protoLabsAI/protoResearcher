@@ -48,12 +48,12 @@ def _extract_text(pdf_path: Path, pages: str | None = None) -> str:
 
 
 def _resolve_path(path_or_id: str) -> Path | None:
-    """Resolve a paper path from a path string or arxiv ID."""
+    """Resolve a paper path from a path string or paper ID."""
     p = Path(path_or_id)
     if p.exists():
         return p
 
-    # Try as arxiv ID
+    # Try as paper ID
     safe_id = path_or_id.replace("/", "_")
     pdf_path = _PAPERS_DIR / f"{safe_id}.pdf"
     if pdf_path.exists():
@@ -79,9 +79,9 @@ class PaperReaderTool(Tool):
     def description(self) -> str:
         return (
             "Read PDF papers that have been downloaded. Actions:\n"
-            "- read: Extract text from a paper (by path or arxiv ID)\n"
+            "- read: Extract text from a paper (by path or paper ID)\n"
             "- list: List downloaded papers\n"
-            "Tip: Use the 'arxiv' tool to download papers first."
+            "Tip: Use the 'browser' tool or rabbit-hole MCP to fetch PDFs first."
         )
 
     @property
@@ -96,7 +96,7 @@ class PaperReaderTool(Tool):
                 },
                 "paper": {
                     "type": "string",
-                    "description": "Path to PDF or arxiv ID (for 'read').",
+                    "description": "Path to PDF or paper ID (for 'read').",
                 },
                 "pages": {
                     "type": "string",
@@ -115,11 +115,11 @@ class PaperReaderTool(Tool):
         if action == "read":
             paper = kwargs.get("paper", "")
             if not paper:
-                return "Error: 'paper' is required (arxiv ID or file path)."
+                return "Error: 'paper' is required (file path or paper ID)."
 
             pdf_path = _resolve_path(paper)
             if pdf_path is None:
-                return f"Error: Paper not found: {paper}. Use 'arxiv' tool to download it first."
+                return f"Error: Paper not found: {paper}. Download the PDF first (browser or rabbit-hole MCP)."
 
             try:
                 text = await asyncio.to_thread(

@@ -19,7 +19,6 @@
       ],
       "scan_interval_hours": 24
     },
-    "arxiv": {"categories": ["cs.AI", "cs.LG", "cs.CL", "cs.CV"], "scan_interval_hours": 12},
     "huggingface": {"scan_interval_hours": 24},
     "github": {"scan_interval_hours": 168, "topics": ["machine-learning", "deep-learning", "llm"]}
   },

@@ -1,7 +1,7 @@
 """
 protoResearcher — AI research agent powered by local LLMs.
 
-Monitors arxiv, HuggingFace, GitHub for the latest in AI/ML research.
+Monitors Discord feeds, HuggingFace, GitHub for the latest in AI/ML research.
 Built on nanobot agent framework with research-specialized tools.
 
 Usage:
@@ -627,7 +627,6 @@ def _main():
     _install_audit_wrapper()
 
     # Register research tools
-    from tools.arxiv import ArxivTool
     from tools.paper_reader import PaperReaderTool
     from tools.huggingface import HuggingFaceTool
     from tools.github_trending import GitHubTrendingTool
@@ -635,7 +634,6 @@ def _main():
     from tools.browser import BrowserTool
     from tools.discord_feed import DiscordFeedTool
 
-    _agent.tools.register(ArxivTool())
     _agent.tools.register(PaperReaderTool())
     _agent.tools.register(HuggingFaceTool())
     _agent.tools.register(GitHubTrendingTool())

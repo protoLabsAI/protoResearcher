@@ -4,9 +4,10 @@ Autonomous AI research agent that tracks the latest developments in AI and machi
 
 ## What it does
 
-- **Searches arxiv** for papers by topic, category, or recency
+- **Scans Discord feeds** for research links, papers, model releases
 - **Reads PDFs** — downloads and extracts text from papers
 - **Monitors HuggingFace** for new models, datasets, and papers
+- **Integrates with [rabbit-hole.io](https://github.com/protoLabsAI/rabbit-hole.io)** — knowledge graph, media ingestion, entity extraction via MCP
 - **Tracks GitHub** trending AI/ML repositories and releases
 - **Stores knowledge** — papers, findings, digests in a semantic knowledge base
 - **Generates digests** — structured research summaries with significance ratings
@@ -19,7 +20,7 @@ Autonomous AI research agent that tracks the latest developments in AI and machi
 protoResearcher
 ├── nanobot/              # Agent framework (submodule)
 ├── tools/
-│   ├── arxiv.py          # Arxiv API search + paper metadata
+│   ├── discord_feed.py   # Discord channel scanner + link classifier
 │   ├── paper_reader.py   # PDF text extraction (PyMuPDF)
 │   ├── huggingface.py    # HF Hub models, datasets, papers
 │   ├── github_trending.py # GitHub search + releases

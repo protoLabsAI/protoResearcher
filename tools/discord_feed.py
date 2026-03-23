@@ -71,7 +71,7 @@ class DiscordFeedTool(Tool):
             "- channels: List channels in a server (guild)\n"
             "- digest: Scan a channel and produce a structured research digest of links found\n\n"
             "URLs are classified as: arxiv, huggingface, github, paper, blog, or link.\n"
-            "Use the extracted URLs with arxiv, huggingface, github_trending, or browser tools."
+            "Use the extracted URLs with huggingface, github_trending, browser, or rabbit-hole MCP tools."
         )
 
     @property
@@ -340,13 +340,13 @@ class DiscordFeedTool(Tool):
                 match = re.search(r'(\d{4}\.\d{4,5})', l["url"])
                 aid = match.group(1) if match else ""
                 lines.append(f"- [{aid}]({l['url']})")
-            lines.append(f"\n_Tip: Use `arxiv` tool with these IDs to get abstracts and download PDFs._\n")
+            lines.append(f"\n_Tip: Use `browser` to fetch these papers, or rabbit-hole MCP to ingest them._\n")
 
         if hf_links:
             lines.append(f"**HuggingFace ({len(hf_links)}):**")
             for l in hf_links:
                 lines.append(f"- {l['url']}")
-            lines.append(f"\n_Tip: Use `huggingface` tool to get model cards and details._\n")
+            lines.append(f"\n_Tip: Use `huggingface` tool to get model cards._\n")
 
         if gh_links:
             lines.append(f"**GitHub ({len(gh_links)}):**")

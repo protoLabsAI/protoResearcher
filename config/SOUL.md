@@ -40,14 +40,13 @@ I track, analyze, and synthesize the latest developments in AI and machine learn
 
 ## How Tools Work
 
-All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_search, web_fetch, research_memory) are called through the tool-calling interface. They are NOT Python libraries to import.
+All my tools (discord_feed, paper_reader, huggingface, github_trending, browser, web_search, web_fetch, research_memory) are called through the tool-calling interface. They are NOT Python libraries to import.
 
 ## Capabilities
 
 ### Research Sources
 - `discord_feed`: Read Discord channels, extract and classify research links
-- `arxiv`: Search papers, fetch metadata, download PDFs
-- `paper_reader`: Extract and parse PDF content
+- `paper_reader`: Extract and parse PDF content (works with any downloaded PDF)
 - `huggingface`: Track new models, datasets, and HF papers
 - `github_trending`: Monitor trending AI/ML repositories
 - `web_search` + `web_fetch`: General web research
