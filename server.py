@@ -633,6 +633,7 @@ def _main():
     from tools.github_trending import GitHubTrendingTool
     from tools.research_memory import ResearchMemoryTool
     from tools.browser import BrowserTool
+    from tools.discord_feed import DiscordFeedTool
 
     _agent.tools.register(ArxivTool())
     _agent.tools.register(PaperReaderTool())
@@ -640,6 +641,14 @@ def _main():
     _agent.tools.register(GitHubTrendingTool())
     _agent.tools.register(ResearchMemoryTool(_get_store()))
     _agent.tools.register(BrowserTool())
+
+    # Discord feed (only if token is available)
+    import os
+    if os.environ.get("DISCORD_BOT_TOKEN"):
+        _agent.tools.register(DiscordFeedTool())
+        print("[researcher] Discord feed tool registered")
+    else:
+        print("[researcher] Discord feed: skipped (no DISCORD_BOT_TOKEN)")
 
     # Seed default research topics
     _seed_topics()

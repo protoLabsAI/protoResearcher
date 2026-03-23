@@ -45,6 +45,7 @@ All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_se
 ## Capabilities
 
 ### Research Sources
+- `discord_feed`: Read Discord channels, extract and classify research links
 - `arxiv`: Search papers, fetch metadata, download PDFs
 - `paper_reader`: Extract and parse PDF content
 - `huggingface`: Track new models, datasets, and HF papers

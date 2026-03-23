@@ -53,6 +53,8 @@ services:
       - LANGFUSE_HOST=${LANGFUSE_HOST:-http://host.docker.internal:3001}
       # GitHub (optional, for higher API rate limits)
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      # Discord (optional, for reading channel feeds)
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
 
     stdin_open: true
     tty: true
@@ -123,6 +125,7 @@ services:
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
       - LANGFUSE_HOST=${LANGFUSE_HOST:-http://host.docker.internal:3001}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
 
     stdin_open: true
     tty: true
