@@ -479,6 +479,9 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
             on_progress=on_progress,
         )
 
+        # nanobot may return OutboundMessage object instead of string
+        if hasattr(response, "content"):
+            response = response.content
         response = _strip_think(response or "")
         return [*progress_messages, {"role": "assistant", "content": response}]
     finally:
