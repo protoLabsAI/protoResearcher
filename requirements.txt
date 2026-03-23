@@ -6,3 +6,8 @@ langfuse>=3.0
 prometheus-client>=0.20
 PyMuPDF>=1.24
 pyyaml>=6.0
+
+# LangGraph agent backend (used when AGENT_BACKEND=langgraph)
+langchain>=1.2.3
+langgraph>=1.1.0
+langchain-openai>=0.3.0

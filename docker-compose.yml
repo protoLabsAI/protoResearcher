@@ -50,6 +50,7 @@ services:
 
     environment:
       - HOME=/home/sandbox
+      - AGENT_BACKEND=${AGENT_BACKEND:-nanobot}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Langfuse tracing (optional)
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}

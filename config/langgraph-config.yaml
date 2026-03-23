@@ -1,0 +1,35 @@
+# protoResearcher LangGraph agent configuration
+# Used when AGENT_BACKEND=langgraph
+
+model:
+  provider: cliproxy  # cliproxy (Claude via OAuth) or vllm (local)
+  name: claude-sonnet-4-6
+  api_base: http://127.0.0.1:8317/v1
+  api_key: protoresearcher-internal
+  temperature: 0.3
+  max_tokens: 4096
+  max_iterations: 75
+
+subagents:
+  explorer:
+    enabled: true
+    tools: [discord_feed, huggingface, github_trending, browser]
+    max_turns: 30
+  analyst:
+    enabled: true
+    tools: [paper_reader, research_memory, browser]
+    max_turns: 40
+  writer:
+    enabled: true
+    tools: [research_memory, discord_feed]
+    max_turns: 20
+
+middleware:
+  knowledge: true
+  audit: true
+  memory: true
+
+knowledge:
+  db_path: /sandbox/knowledge/research.db
+  embed_model: nomic-embed-text
+  top_k: 5

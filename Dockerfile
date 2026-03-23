@@ -32,12 +32,14 @@ RUN ARCH=$(dpkg --print-architecture) \
 # Install nanobot from submodule + Python deps
 COPY nanobot/ /opt/nanobot/
 RUN pip install --no-cache-dir /opt/nanobot/ \
-    gradio sqlite-vec httpx uvicorn langfuse prometheus-client PyMuPDF pyyaml
+    gradio sqlite-vec httpx uvicorn langfuse prometheus-client PyMuPDF pyyaml \
+    langchain langchain-openai langgraph
 
 # Install protoResearcher
 COPY tools/ /opt/protoresearcher/tools/
 COPY knowledge/ /opt/protoresearcher/knowledge/
 COPY lab/ /opt/protoresearcher/lab/
+COPY graph/ /opt/protoresearcher/graph/
 COPY skills/ /opt/protoresearcher/skills/
 COPY audit.py /opt/protoresearcher/audit.py
 COPY tracing.py /opt/protoresearcher/tracing.py

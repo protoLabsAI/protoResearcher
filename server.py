@@ -2,11 +2,11 @@
 protoResearcher — AI research agent powered by local LLMs.
 
 Monitors Discord feeds, HuggingFace, GitHub for the latest in AI/ML research.
-Built on nanobot agent framework with research-specialized tools.
+Supports two agent backends: nanobot (legacy) and LangGraph (new).
 
 Usage:
     python server.py                          # default port 7870
-    python server.py --port 7870              # custom port
+    AGENT_BACKEND=langgraph python server.py  # use LangGraph backend
     python server.py --config path/to/config  # custom config
 """
 
@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import contextvars
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -21,11 +22,17 @@ from typing import Any
 
 from chat_ui import create_chat_app
 
+# Agent backend selection
+_BACKEND = os.environ.get("AGENT_BACKEND", "nanobot")
+
 # ---------------------------------------------------------------------------
 # Agent setup
 # ---------------------------------------------------------------------------
 
-_agent = None
+_agent = None       # nanobot AgentLoop (when AGENT_BACKEND=nanobot)
+_graph = None       # LangGraph compiled graph (when AGENT_BACKEND=langgraph)
+_graph_config = None  # LangGraphConfig
+_checkpointer = None  # LangGraph MemorySaver for session persistence
 _config = None
 
 
@@ -90,6 +97,29 @@ def _init_agent(config_path: str | None = None):
 
     # Override nanobot's default identity with protoResearcher branding
     _patch_identity()
+
+
+def _init_langgraph_agent():
+    """Initialize the LangGraph agent backend."""
+    global _graph, _graph_config, _checkpointer
+
+    from graph.agent import create_researcher_graph
+    from graph.config import LangGraphConfig
+    from langgraph.checkpoint.memory import MemorySaver
+
+    config_path = Path(__file__).parent / "config" / "langgraph-config.yaml"
+    _graph_config = LangGraphConfig.from_yaml(config_path)
+
+    store = _get_store()
+    _checkpointer = MemorySaver()
+
+    _graph = create_researcher_graph(
+        config=_graph_config,
+        knowledge_store=store,
+        include_subagents=True,
+    )
+
+    print(f"[researcher] LangGraph agent initialized (model: {_graph_config.model_name})")
 
 
 def _detect_vllm_model(api_base: str) -> str | None:
@@ -543,7 +573,8 @@ import queue as _queue_mod
 
 
 async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
-    """Process a message through nanobot's agent loop."""
+    """Route to the active backend."""
+    # Slash commands are handled identically by both backends
     stripped = message.strip()
     if stripped.startswith("/"):
         parts = stripped.split(None, 1)
@@ -553,6 +584,14 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
         if result is not None:
             return result
 
+    if _BACKEND == "langgraph" and _graph is not None:
+        return await _chat_langgraph(message, session_id)
+    else:
+        return await _chat_nanobot(message, session_id)
+
+
+async def _chat_nanobot(message: str, session_id: str) -> list[dict[str, Any]]:
+    """Process via nanobot's agent loop (legacy backend)."""
     import tracing
     token = _current_session_id.set(session_id)
     msg_token = _message_tool_content.set([])
@@ -585,12 +624,10 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
             on_progress=on_progress,
         )
 
-        # nanobot may return OutboundMessage object instead of string
         if hasattr(response, "content"):
             response = response.content
         response = _strip_think(response or "")
 
-        # If response is empty but agent sent content via message() tool, use that
         captured = _message_tool_content.get([])
         if not response and captured:
             response = "\n\n".join(captured)
@@ -600,6 +637,39 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
         tracing.end_trace()
         _current_session_id.reset(token)
         _message_tool_content.reset(msg_token)
+
+
+async def _chat_langgraph(message: str, session_id: str) -> list[dict[str, Any]]:
+    """Process via LangGraph agent backend."""
+    import tracing
+    from langchain_core.messages import HumanMessage, AIMessage
+
+    tracing.start_trace(session_id=session_id, name="researcher-chat-lg", metadata={"message_preview": message[:100]})
+    try:
+        # Invoke the graph with session-scoped checkpointing
+        config = {"configurable": {"thread_id": f"gradio:{session_id}"}}
+        if _checkpointer:
+            config["checkpointer"] = _checkpointer
+
+        result = await _graph.ainvoke(
+            {"messages": [HumanMessage(content=message)], "session_id": session_id},
+            config=config,
+        )
+
+        # Extract the last AI message
+        messages = result.get("messages", [])
+        response = ""
+        for msg in reversed(messages):
+            if isinstance(msg, AIMessage) and msg.content:
+                response = msg.content if isinstance(msg.content, str) else str(msg.content)
+                break
+
+        response = _strip_think(response)
+        return [{"role": "assistant", "content": response}]
+    except Exception as e:
+        return [{"role": "assistant", "content": f"**Error:** {e}"}]
+    finally:
+        tracing.end_trace()
 
 
 def chat_streaming(message: str, history: list[dict], session_id: str):
@@ -840,38 +910,39 @@ def _main():
     parser.add_argument("--share", action="store_true")
     args = parser.parse_args()
 
-    _init_agent(args.config)
-
-    # Initialize observability
+    # Initialize observability (shared by both backends)
     import tracing
     import metrics
     tracing.init()
     metrics.init()
 
-    # Install audit logging wrapper
-    _install_audit_wrapper()
+    print(f"[researcher] Agent backend: {_BACKEND}")
 
-    # Register research tools
-    from tools.paper_reader import PaperReaderTool
-    from tools.huggingface import HuggingFaceTool
-    from tools.github_trending import GitHubTrendingTool
-    from tools.research_memory import ResearchMemoryTool
-    from tools.browser import BrowserTool
-    from tools.discord_feed import DiscordFeedTool
-
-    _agent.tools.register(PaperReaderTool())
-    _agent.tools.register(HuggingFaceTool())
-    _agent.tools.register(GitHubTrendingTool())
-    _agent.tools.register(ResearchMemoryTool(_get_store()))
-    _agent.tools.register(BrowserTool())
-
-    # Discord feed (only if token is available)
-    import os
-    if os.environ.get("DISCORD_BOT_TOKEN"):
-        _agent.tools.register(DiscordFeedTool())
-        print("[researcher] Discord feed tool registered")
+    if _BACKEND == "langgraph":
+        _init_langgraph_agent()
     else:
-        print("[researcher] Discord feed: skipped (no DISCORD_BOT_TOKEN)")
+        # Nanobot backend (legacy)
+        _init_agent(args.config)
+        _install_audit_wrapper()
+
+        from tools.paper_reader import PaperReaderTool
+        from tools.huggingface import HuggingFaceTool
+        from tools.github_trending import GitHubTrendingTool
+        from tools.research_memory import ResearchMemoryTool
+        from tools.browser import BrowserTool
+        from tools.discord_feed import DiscordFeedTool
+
+        _agent.tools.register(PaperReaderTool())
+        _agent.tools.register(HuggingFaceTool())
+        _agent.tools.register(GitHubTrendingTool())
+        _agent.tools.register(ResearchMemoryTool(_get_store()))
+        _agent.tools.register(BrowserTool())
+
+        if os.environ.get("DISCORD_BOT_TOKEN"):
+            _agent.tools.register(DiscordFeedTool())
+            print("[researcher] Discord feed tool registered")
+        else:
+            print("[researcher] Discord feed: skipped (no DISCORD_BOT_TOKEN)")
 
     # Seed default research topics
     _seed_topics()
