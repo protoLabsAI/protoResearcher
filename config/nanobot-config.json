@@ -3,7 +3,7 @@
     "defaults": {
       "workspace": "/sandbox",
       "model": "claude-sonnet-4-6",
-      "provider": "anthropic",
+      "provider": "cliproxy",
       "maxTokens": 4096,
       "contextWindowTokens": 262144,
       "temperature": 0.3,
@@ -16,9 +16,9 @@
     "sendToolHints": true
   },
   "providers": {
-    "anthropic": {
-      "apiKey": "env:ANTHROPIC_API_KEY",
-      "apiBase": null,
+    "cliproxy": {
+      "apiKey": "protoresearcher-internal",
+      "apiBase": "http://127.0.0.1:8317/v1",
       "extraHeaders": null
     },
     "vllm": {

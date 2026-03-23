@@ -622,13 +622,12 @@ def _build_settings_callbacks() -> dict:
             detected = _detect_vllm_model(api_base)
             label = detected or "local vLLM"
             choices.append(f"local: {label}")
-        # Offer Claude models if credentials available
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            choices.extend([
-                "claude: claude-sonnet-4-6",
-                "claude: claude-haiku-4-5",
-                "claude: claude-opus-4-6",
-            ])
+        # Claude models via CLIProxyAPI (OAuth)
+        choices.extend([
+            "claude: claude-sonnet-4-6",
+            "claude: claude-haiku-4-5",
+            "claude: claude-opus-4-6",
+        ])
         return choices
 
     def get_current_provider() -> str:
@@ -672,19 +671,13 @@ def _build_settings_callbacks() -> dict:
                 provider_name="vllm",
             )
         elif provider_type == "claude":
-            import os
-            import litellm
-            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-            if not api_key:
-                return "**Error:** No Anthropic credentials found."
-            # Clear global api_base set by vLLM provider — otherwise litellm
-            # sends Anthropic requests to the vLLM endpoint
-            litellm.api_base = None
+            # Route through CLIProxyAPI (OAuth proxy on port 8317)
+            # openai/ prefix tells litellm to use OpenAI protocol
             provider = LiteLLMProvider(
-                api_key=api_key,
-                api_base=None,
-                default_model=model_name,
-                provider_name="anthropic",
+                api_key="protoresearcher-internal",
+                api_base="http://127.0.0.1:8317/v1",
+                default_model=f"openai/{model_name}",
+                provider_name="openai",
             )
         else:
             return f"**Error:** Unknown provider type: {provider_type}"

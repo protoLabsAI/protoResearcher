@@ -22,6 +22,13 @@ RUN npm install -g agent-browser \
 # Claude Code CLI (for Claude model access)
 RUN npm install -g @anthropic-ai/claude-code
 
+# CLIProxyAPI — OpenAI-compatible proxy that uses Claude Code OAuth
+ARG CLIPROXY_VERSION=6.8.55
+RUN ARCH=$(dpkg --print-architecture) \
+    && curl -fsSL "https://github.com/router-for-me/CLIProxyAPI/releases/download/v${CLIPROXY_VERSION}/CLIProxyAPI_${CLIPROXY_VERSION}_linux_${ARCH}.tar.gz" \
+    | tar xz -C /usr/local/bin cli-proxy-api \
+    && chmod +x /usr/local/bin/cli-proxy-api
+
 # Install nanobot from submodule + Python deps
 COPY nanobot/ /opt/nanobot/
 RUN pip install --no-cache-dir /opt/nanobot/ \
@@ -44,6 +51,10 @@ COPY static/ /opt/protoresearcher/static/
 # Sandbox workspace + knowledge/audit/papers dirs
 RUN mkdir -p /sandbox /tmp/sandbox /sandbox/audit /sandbox/knowledge /sandbox/papers \
     && chown -R sandbox:sandbox /sandbox /tmp/sandbox
+
+# CLIProxyAPI auth dir (persisted via volume)
+RUN mkdir -p /opt/.cliproxy \
+    && chown -R sandbox:sandbox /opt/.cliproxy
 
 # Nanobot data dir
 RUN mkdir -p /home/sandbox/.nanobot \

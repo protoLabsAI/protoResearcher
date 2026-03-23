@@ -20,9 +20,6 @@ cp /opt/protoresearcher/config/SOUL.md /sandbox/SOUL.md
 cp -r /opt/protoresearcher/skills /sandbox/skills
 
 # --- Claude credentials ---
-# Two paths:
-# 1. CLAUDE_OAUTH_CREDENTIALS env var (macOS keychain extraction)
-# 2. Mounted ~/.claude/ at /opt/claude-creds/ (Linux)
 mkdir -p /home/sandbox/.claude
 
 if [ -n "$CLAUDE_OAUTH_CREDENTIALS" ]; then
@@ -35,14 +32,35 @@ elif [ -f /opt/claude-creds/.credentials.json ]; then
     echo "[entrypoint] Claude credentials loaded from mounted volume"
 fi
 
-# Export OAuth token as ANTHROPIC_API_KEY if not already set
-if { [ -z "${ANTHROPIC_API_KEY:-}" ] || [ "$ANTHROPIC_API_KEY" = "" ]; } && [ -f /home/sandbox/.claude/.credentials.json ]; then
-    TOKEN=$(python3 -c "import json; d=json.load(open('/home/sandbox/.claude/.credentials.json')); print(d.get('claudeAiOauth',{}).get('accessToken',''))" 2>/dev/null)
-    if [ -n "$TOKEN" ]; then
-        export ANTHROPIC_API_KEY="$TOKEN"
-        echo "[entrypoint] Exported OAuth token as ANTHROPIC_API_KEY"
-    fi
+# --- CLIProxyAPI — OpenAI-compatible proxy for Claude OAuth ---
+mkdir -p /opt/.cliproxy
+cp /opt/protoresearcher/config/cliproxy-config.yaml /opt/.cliproxy/config.yaml
+
+# Inject OAuth token into CLIProxyAPI config
+if [ -f /home/sandbox/.claude/.credentials.json ]; then
+    python3 -c "
+import json
+import yaml
+
+with open('/home/sandbox/.claude/.credentials.json') as f:
+    creds = json.load(f)
+token = creds.get('claudeAiOauth', {}).get('accessToken', '')
+
+with open('/opt/.cliproxy/config.yaml') as f:
+    cfg = yaml.safe_load(f)
+
+if token:
+    cfg['claude-api-key'] = [{'api-key': token}]
+    with open('/opt/.cliproxy/config.yaml', 'w') as f:
+        yaml.dump(cfg, f, default_flow_style=False)
+    print('[entrypoint] Injected Claude OAuth token into CLIProxyAPI config')
+else:
+    print('[entrypoint] No OAuth token found for CLIProxyAPI')
+" 2>/dev/null
 fi
+
+cli-proxy-api --config /opt/.cliproxy/config.yaml &
+echo "[entrypoint] CLIProxyAPI started on port 8317"
 
 # Lab mode setup (if GPU available)
 if [ -n "${LAB_GPU}" ] || command -v nvidia-smi &>/dev/null; then

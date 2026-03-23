@@ -28,6 +28,7 @@ services:
       - protoresearcher-knowledge:/sandbox/knowledge
       - protoresearcher-audit:/sandbox/audit
       - protoresearcher-papers:/sandbox/papers
+      - protoresearcher-cliproxy:/opt/.cliproxy
       # Claude OAuth credentials (read-only)
       - ${HOME}/.claude:/opt/claude-creds:ro
 
@@ -144,4 +145,5 @@ volumes:
   protoresearcher-knowledge:
   protoresearcher-audit:
   protoresearcher-papers:
+  protoresearcher-cliproxy:
   protoresearcher-lab:
