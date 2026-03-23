@@ -281,27 +281,18 @@ def create_chat_app(
                 history.append({"role": "user", "content": message})
                 return "", history, message
 
-            if streaming_chat_fn:
-                # Streaming mode — yields incremental updates as tools run
-                def get_response(history: list[dict], original_msg: str, sid: str):
-                    if not original_msg.strip():
-                        yield history, sid
-                        return
-                    yield from streaming_chat_fn(original_msg, history, sid)
-            else:
-                # Blocking mode — waits for full response
-                def get_response(history: list[dict], original_msg: str, sid: str):
-                    if not original_msg.strip():
-                        return history, sid
-                    result = asyncio.run(chat_fn(original_msg, sid))
-                    for msg in result:
-                        meta = msg.get("metadata", {})
-                        if meta.get("_clear"):
-                            return [], sid
-                        if meta.get("_new"):
-                            return [], secrets.token_hex(4)
-                    history.extend(result)
+            def get_response(history: list[dict], original_msg: str, sid: str):
+                if not original_msg.strip():
                     return history, sid
+                result = asyncio.run(chat_fn(original_msg, sid))
+                for msg in result:
+                    meta = msg.get("metadata", {})
+                    if meta.get("_clear"):
+                        return [], sid
+                    if meta.get("_new"):
+                        return [], secrets.token_hex(4)
+                history.extend(result)
+                return history, sid
 
             pending_msg = gr.State("")
 

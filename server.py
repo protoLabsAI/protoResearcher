@@ -878,7 +878,6 @@ def _main():
 
     blocks = create_chat_app(
         chat_fn=chat,
-        streaming_chat_fn=chat_streaming,
         title="🔬 protoResearcher",
         subtitle="",
         placeholder="Ask me about the latest in AI research...",
