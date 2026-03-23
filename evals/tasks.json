@@ -1,0 +1,82 @@
+[
+  {
+    "id": "simple_question",
+    "name": "Simple factual question",
+    "prompt": "What is a transformer architecture in machine learning? Keep your answer to 2-3 sentences.",
+    "expected_tools": [],
+    "category": "simple",
+    "expected_patterns": ["transformer", "attention", "model"]
+  },
+  {
+    "id": "discord_scan",
+    "name": "Discord channel scan",
+    "prompt": "Scan the AI research Discord channel for recent posts about new model releases.",
+    "expected_tools": ["discord_feed"],
+    "category": "medium",
+    "expected_patterns": ["model", "release"]
+  },
+  {
+    "id": "hf_model_search",
+    "name": "HuggingFace model search",
+    "prompt": "Search HuggingFace for the latest text-to-image models released this week. Summarize the top 3.",
+    "expected_tools": ["huggingface"],
+    "category": "medium",
+    "expected_patterns": ["model", "image"]
+  },
+  {
+    "id": "github_trending",
+    "name": "GitHub trending search",
+    "prompt": "What are the trending AI/ML repositories on GitHub right now? Focus on inference and training frameworks.",
+    "expected_tools": ["github_trending"],
+    "category": "medium",
+    "expected_patterns": ["github", "repository"]
+  },
+  {
+    "id": "knowledge_topics",
+    "name": "Knowledge base topic query",
+    "prompt": "/topics",
+    "expected_tools": [],
+    "category": "simple",
+    "expected_patterns": ["topic", "research"]
+  },
+  {
+    "id": "paper_analysis",
+    "name": "Paper analysis request",
+    "prompt": "Find and analyze the paper 'Attention Is All You Need'. Summarize its key contributions and impact.",
+    "expected_tools": ["paper_reader"],
+    "category": "medium",
+    "expected_patterns": ["attention", "transformer", "paper"]
+  },
+  {
+    "id": "multi_step_scan_analyze",
+    "name": "Multi-step: scan then analyze",
+    "prompt": "Scan the Discord AI channel for any papers posted today, then analyze the most interesting one in detail. Provide a structured summary with significance rating.",
+    "expected_tools": ["discord_feed", "paper_reader"],
+    "category": "complex",
+    "expected_patterns": ["paper", "summary"]
+  },
+  {
+    "id": "digest_generation",
+    "name": "Weekly digest generation",
+    "prompt": "Generate a research digest covering the latest findings in our knowledge base. Include papers, model releases, and key trends. Format it as a newsletter.",
+    "expected_tools": ["research_memory"],
+    "category": "complex",
+    "expected_patterns": ["digest", "research"]
+  },
+  {
+    "id": "complex_multi_tool",
+    "name": "Complex multi-tool research",
+    "prompt": "Do a comprehensive survey of recent progress in mixture-of-experts LLMs: check HuggingFace for new MoE models, search GitHub for MoE training frameworks, and look for relevant papers. Compile everything into a structured research brief.",
+    "expected_tools": ["huggingface", "github_trending", "paper_reader"],
+    "category": "complex",
+    "expected_patterns": ["mixture", "expert", "MoE"]
+  },
+  {
+    "id": "edge_empty_input",
+    "name": "Edge case: empty input",
+    "prompt": "",
+    "expected_tools": [],
+    "category": "simple",
+    "expected_patterns": []
+  }
+]
