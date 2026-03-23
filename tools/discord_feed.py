@@ -16,6 +16,7 @@ import httpx
 from nanobot.agent.tools.base import Tool
 
 _DISCORD_API = "https://discord.com/api/v10"
+_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 _URL_PATTERN = re.compile(r'https?://[^\s<>\[\]()\"\']+')
 
 # URL classification patterns
@@ -65,11 +66,12 @@ class DiscordFeedTool(Tool):
     @property
     def description(self) -> str:
         return (
-            "Read messages from Discord channels and extract research links. Actions:\n"
+            "Read messages from Discord channels and publish research digests. Actions:\n"
             "- scan: Read recent messages from a channel and extract all URLs with classifications\n"
             "- history: Get raw message history from a channel\n"
             "- channels: List channels in a server (guild)\n"
-            "- digest: Scan a channel and produce a structured research digest of links found\n\n"
+            "- digest: Scan a channel and produce a structured research digest of links found\n"
+            "- publish: Post a message to the research Discord channel via webhook\n\n"
             "URLs are classified as: arxiv, huggingface, github, paper, blog, or link.\n"
             "Use the extracted URLs with huggingface, github_trending, browser, or rabbit-hole MCP tools."
         )
@@ -81,7 +83,7 @@ class DiscordFeedTool(Tool):
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["scan", "history", "channels", "digest"],
+                    "enum": ["scan", "history", "channels", "digest", "publish"],
                     "description": "Action to perform.",
                 },
                 "channel_id": {
@@ -100,16 +102,28 @@ class DiscordFeedTool(Tool):
                     "type": "string",
                     "description": "Only fetch messages after this message ID (for pagination).",
                 },
+                "content": {
+                    "type": "string",
+                    "description": "Message content to publish (for 'publish' action). Markdown supported.",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Embed title for published message (optional).",
+                },
             },
             "required": ["action"],
         }
 
     async def execute(self, **kwargs: Any) -> str:
+        action = kwargs["action"]
+
+        # Publish doesn't need bot token, just webhook
+        if action == "publish":
+            return await self._publish(kwargs)
+
         token = _get_token()
         if not token:
             return "Error: DISCORD_BOT_TOKEN not set. Add it to your environment."
-
-        action = kwargs["action"]
 
         if action == "scan":
             return await self._scan(token, kwargs)
@@ -374,3 +388,47 @@ class DiscordFeedTool(Tool):
                 lines.append(f"  _...and {len(other_links) - 10} more_")
 
         return "\n".join(lines)
+
+    async def _publish(self, kwargs: dict) -> str:
+        """Publish a message to Discord via webhook."""
+        webhook_url = _WEBHOOK_URL
+        if not webhook_url:
+            return "Error: DISCORD_WEBHOOK_URL not set. Add it to your environment."
+
+        content = kwargs.get("content", "")
+        title = kwargs.get("title", "")
+
+        if not content:
+            return "Error: 'content' is required for publish."
+
+        payload: dict[str, Any] = {
+            "username": "protoResearcher",
+        }
+
+        if title:
+            # Use embed for titled content (4096 char limit)
+            payload["embeds"] = [{
+                "title": title,
+                "description": content[:4096],
+                "color": 0x14b8a6,
+            }]
+        else:
+            if len(content) <= 2000:
+                payload["content"] = content
+            else:
+                # Embed for longer content
+                payload["embeds"] = [{
+                    "title": "🔬 Research Update",
+                    "description": content[:4096],
+                    "color": 0x14b8a6,
+                }]
+
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(webhook_url, json=payload)
+                if resp.status_code == 204:
+                    return "Published to Discord."
+                resp.raise_for_status()
+                return "Published to Discord."
+        except Exception as e:
+            return f"Error publishing to Discord: {e}"
