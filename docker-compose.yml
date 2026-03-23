@@ -1,0 +1,65 @@
+services:
+  researcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: protoresearcher
+    hostname: sandbox
+
+    # NemoClaw-inspired security
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=seccomp-profile.json
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    read_only: true
+
+    # Writable mounts (tmpfs = ephemeral)
+    tmpfs:
+      - /tmp:size=512M,uid=1001,gid=1001
+      - /run:size=64M
+      - /sandbox:size=512M,uid=1001,gid=1001
+      - /home/sandbox:size=128M,uid=1001,gid=1001
+
+    # Persistent volumes
+    volumes:
+      - protoresearcher-knowledge:/sandbox/knowledge
+      - protoresearcher-audit:/sandbox/audit
+      - protoresearcher-papers:/sandbox/papers
+
+    ports:
+      - "7870:7870"
+
+    # Network: host vLLM + Ollama access
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          memory: 512M
+
+    environment:
+      - HOME=/home/sandbox
+      # Langfuse tracing (optional)
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-http://host.docker.internal:3001}
+      # GitHub (optional, for higher API rate limits)
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+
+    stdin_open: true
+    tty: true
+
+    command: ["/opt/protoresearcher/entrypoint.sh"]
+
+volumes:
+  protoresearcher-knowledge:
+  protoresearcher-audit:
+  protoresearcher-papers:
