@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,11 +22,12 @@ RUN npm install -g agent-browser \
 # Install nanobot from submodule + Python deps
 COPY nanobot/ /opt/nanobot/
 RUN pip install --no-cache-dir /opt/nanobot/ \
-    gradio sqlite-vec httpx uvicorn langfuse prometheus-client PyMuPDF
+    gradio sqlite-vec httpx uvicorn langfuse prometheus-client PyMuPDF pyyaml
 
 # Install protoResearcher
 COPY tools/ /opt/protoresearcher/tools/
 COPY knowledge/ /opt/protoresearcher/knowledge/
+COPY lab/ /opt/protoresearcher/lab/
 COPY skills/ /opt/protoresearcher/skills/
 COPY audit.py /opt/protoresearcher/audit.py
 COPY tracing.py /opt/protoresearcher/tracing.py
@@ -49,5 +50,28 @@ RUN mkdir -p /home/sandbox/.nanobot \
 USER sandbox
 WORKDIR /sandbox
 
+EXPOSE 7870
+CMD ["/opt/protoresearcher/entrypoint.sh"]
+
+# ---------------------------------------------------------------------------
+# Lab stage — adds torch + LLaMA-Factory deps for GPU training
+# Usage: docker compose --profile lab up --build
+# ---------------------------------------------------------------------------
+FROM base AS lab
+
+USER root
+
+# Install PyTorch (CUDA 12.8) + training deps
+RUN pip install --no-cache-dir \
+    torch==2.9.1 --index-url https://download.pytorch.org/whl/cu128 \
+    && pip install --no-cache-dir \
+    transformers accelerate peft trl datasets bitsandbytes
+
+# Lab workspace
+RUN mkdir -p /sandbox/lab /mnt/data/training/researcher \
+    && chown -R sandbox:sandbox /sandbox/lab /mnt/data/training/researcher
+
+USER sandbox
+WORKDIR /sandbox
 EXPOSE 7870
 CMD ["/opt/protoresearcher/entrypoint.sh"]

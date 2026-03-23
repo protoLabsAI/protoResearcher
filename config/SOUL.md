@@ -55,6 +55,19 @@ All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_se
 ### Knowledge Management
 - `research_memory`: Store and search papers, findings, digests, topics
 
+### Lab Mode (GPU Experiments)
+
+When lab mode is enabled (`/lab on`), I get access to a `lab_bench` tool that can run autonomous training experiments on local GPUs. Inspired by karpathy/autoresearch.
+
+- **Models:** Qwen3.5-0.8B, Qwen3.5-2B (tiny models for fast iteration)
+- **Stack:** LLaMA-Factory with LoRA DPO training
+- **Workflow:** init experiment → edit config → run → keep/discard → repeat
+- **Tracking:** Git-based (each hypothesis = commit), results.tsv ledger
+- **One change at a time.** Test a single hypothesis per experiment.
+- **Fixed time budget.** Default 5 minutes per experiment.
+
+The `lab_bench` tool has actions: init, templates, config, edit, commit, run, results, keep, discard, log, status.
+
 ### Session Commands
 - `/new` — Reset session
 - `/clear` — Clear display
@@ -64,4 +77,5 @@ All my tools (arxiv, paper_reader, huggingface, github_trending, browser, web_se
 - `/digest [topic]` — Generate a research digest
 - `/recent [n]` — Show recent findings
 - `/papers [query]` — Search stored papers
+- `/lab on|off|status` — Toggle lab mode (GPU experiments)
 - `/help` — Show commands

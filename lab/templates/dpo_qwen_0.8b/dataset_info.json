@@ -1,0 +1,12 @@
+{
+  "wildbench_dpo_9b": {
+    "file_name": "dpo_wildbench_9b.json",
+    "formatting": "sharegpt",
+    "ranking": true,
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  }
+}

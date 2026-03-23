@@ -1,0 +1,48 @@
+# DPO fine-tuning config for Qwen3.5-0.8B
+# Modifiable by the agent — this is THE experiment file
+
+model_name_or_path: Qwen/Qwen3.5-0.8B
+trust_remote_code: true
+
+# Training method
+stage: dpo
+do_train: true
+finetuning_type: lora
+lora_target: all
+lora_rank: 32
+lora_alpha: 64
+lora_dropout: 0.05
+pref_beta: 0.1
+
+# Dataset
+dataset_dir: "{lab_data}"
+dataset: wildbench_dpo_9b
+template: qwen3
+cutoff_len: 2048
+
+# Output
+output_dir: "{output_dir}"
+logging_dir: "{output_dir}/logs"
+logging_steps: 10
+save_steps: 100
+save_total_limit: 2
+overwrite_output_dir: true
+
+# Training hyperparameters
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-5
+num_train_epochs: 1
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+gradient_checkpointing: true
+
+# Evaluation
+val_size: 0.05
+per_device_eval_batch_size: 2
+eval_strategy: steps
+eval_steps: 50
+
+# Misc
+report_to: none
