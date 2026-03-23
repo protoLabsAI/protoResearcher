@@ -66,14 +66,16 @@ class DiscordFeedTool(Tool):
     @property
     def description(self) -> str:
         return (
-            "Read messages from Discord channels and publish research digests. Actions:\n"
-            "- scan: Read recent messages from a channel and extract all URLs with classifications\n"
-            "- history: Get raw message history from a channel\n"
-            "- channels: List channels in a server (guild)\n"
-            "- digest: Scan a channel and produce a structured research digest of links found\n"
-            "- publish: Post a message to the research Discord channel via webhook\n\n"
-            "URLs are classified as: arxiv, huggingface, github, paper, blog, or link.\n"
-            "Use the extracted URLs with huggingface, github_trending, browser, or rabbit-hole MCP tools."
+            "Read messages from Discord channels and publish research digests.\n\n"
+            "READING (requires channel_id):\n"
+            "- scan: Read recent messages and extract classified URLs\n"
+            "- history: Get raw message history\n"
+            "- channels: List channels in a server (guild_id required)\n"
+            "- digest: Scan a channel and produce a structured link digest\n\n"
+            "PUBLISHING (NO channel_id needed — uses pre-configured webhook):\n"
+            "- publish: Post content to #protolabs-research via webhook. "
+            "Just provide 'content' and optionally 'title'. The webhook is auto-configured.\n\n"
+            "URLs are classified as: arxiv, huggingface, github, paper, blog, or link."
         )
 
     @property
@@ -88,7 +90,7 @@ class DiscordFeedTool(Tool):
                 },
                 "channel_id": {
                     "type": "string",
-                    "description": "Discord channel ID to read from.",
+                    "description": "Discord channel ID to read from (for scan/history/digest only — NOT needed for publish).",
                 },
                 "guild_id": {
                     "type": "string",
@@ -104,11 +106,11 @@ class DiscordFeedTool(Tool):
                 },
                 "content": {
                     "type": "string",
-                    "description": "Message content to publish (for 'publish' action). Markdown supported.",
+                    "description": "Content to publish via webhook (for 'publish' action only). Markdown supported. No channel_id needed.",
                 },
                 "title": {
                     "type": "string",
-                    "description": "Embed title for published message (optional).",
+                    "description": "Embed title for publish (default: '🔬 Research Update'). Only used with publish action.",
                 },
             },
             "required": ["action"],

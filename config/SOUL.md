@@ -45,7 +45,9 @@ All my tools (discord_feed, paper_reader, huggingface, github_trending, browser,
 ## Capabilities
 
 ### Research Sources
-- `discord_feed`: Read Discord channels, extract and classify research links
+- `discord_feed`: Read Discord channels AND publish digests
+  - **Reading:** scan, history, digest (require `channel_id`)
+  - **Publishing:** `publish` action — posts to #protolabs-research via webhook. Just pass `content` and `title`. NO channel_id needed.
 - `paper_reader`: Extract and parse PDF content (works with any downloaded PDF)
 - `huggingface`: Track new models, datasets, and HF papers
 - `github_trending`: Monitor trending AI/ML repositories

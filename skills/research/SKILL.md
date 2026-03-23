@@ -55,6 +55,20 @@ When generating a research digest:
    - Notable papers (with significance ratings)
    - Recommendations for the team
 4. Store the digest using research_memory (store_digest)
+5. **Publish to Discord** using `discord_feed` with `action=publish`:
+   - Pass `content` with the full digest text and `title` with a descriptive heading
+   - Do NOT pass `channel_id` — publish uses a pre-configured webhook automatically
+   - Long content is auto-chunked into multiple embeds
+
+## Publishing to Discord
+
+To publish any content to the team's Discord:
+
+```
+discord_feed action=publish title="Weekly Digest — 2026-03-24" content="..."
+```
+
+**Important:** The `publish` action does NOT need a `channel_id`. It posts via a webhook to #protolabs-research automatically. Only `scan`, `history`, and `digest` actions need `channel_id`.
 
 ## Significance Rating Guide
 
