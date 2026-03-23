@@ -395,6 +395,17 @@ def _install_audit_wrapper():
     async def _audited_execute(name: str, params: dict[str, Any]) -> str:
         session_id = _current_session_id.get("")
         t0 = time.monotonic()
+
+        # Capture message tool content so it can be surfaced in the chat
+        if name == "message":
+            content = params.get("content", "")
+            if content:
+                try:
+                    captured = _message_tool_content.get([])
+                    captured.append(content)
+                except LookupError:
+                    pass
+
         try:
             result = await original_execute(name, params)
             duration_ms = int((time.monotonic() - t0) * 1000)
@@ -437,6 +448,12 @@ def _strip_think(text: str) -> str:
     return text.strip()
 
 
+# Captured message tool content — nanobot sends final responses via message() tool
+_message_tool_content: contextvars.ContextVar[list[str]] = contextvars.ContextVar(
+    "_message_tool_content", default=[]
+)
+
+
 async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
     """Process a message through nanobot's agent loop."""
     stripped = message.strip()
@@ -450,6 +467,7 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
 
     import tracing
     token = _current_session_id.set(session_id)
+    msg_token = _message_tool_content.set([])
     tracing.start_trace(session_id=session_id, name="researcher-chat", metadata={"message_preview": message[:100]})
     try:
         progress_messages: list[dict] = []
@@ -483,10 +501,17 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
         if hasattr(response, "content"):
             response = response.content
         response = _strip_think(response or "")
+
+        # If response is empty but agent sent content via message() tool, use that
+        captured = _message_tool_content.get([])
+        if not response and captured:
+            response = "\n\n".join(captured)
+
         return [*progress_messages, {"role": "assistant", "content": response}]
     finally:
         tracing.end_trace()
         _current_session_id.reset(token)
+        _message_tool_content.reset(msg_token)
 
 
 # ---------------------------------------------------------------------------
