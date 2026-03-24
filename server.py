@@ -150,12 +150,21 @@ def _make_provider(config):
         if detected:
             model = detected
 
+    # CLIProxyAPI is OpenAI-compatible — tell nanobot/litellm to use openai protocol
+    effective_provider = provider_name
+    api_key = p.api_key if p else None
+    if provider_name == "cliproxy":
+        effective_provider = "openai"
+        api_key = api_key or "protoresearcher-internal"
+        # litellm's openai provider needs this env var
+        os.environ["OPENAI_API_KEY"] = api_key
+
     provider = LiteLLMProvider(
-        api_key=p.api_key if p else None,
+        api_key=api_key,
         api_base=api_base,
         default_model=model,
         extra_headers=p.extra_headers if p else None,
-        provider_name=provider_name,
+        provider_name=effective_provider,
     )
 
     defaults = config.agents.defaults

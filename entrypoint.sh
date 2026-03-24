@@ -67,6 +67,10 @@ inject_token
 cli-proxy-api --config /opt/.cliproxy/config.yaml &
 echo "[entrypoint] CLIProxyAPI started on port 8317"
 
+# Set env vars for litellm to route through CLIProxyAPI
+export OPENAI_API_KEY="protoresearcher-internal"
+export OPENAI_API_BASE="http://127.0.0.1:8317/v1"
+
 # --- Token refresh loop ---
 # Watches the mounted ~/.claude credentials for changes.
 # CLIProxyAPI has a file watcher that auto-reloads config on change,

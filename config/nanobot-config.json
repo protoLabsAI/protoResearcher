@@ -2,7 +2,7 @@
   "agents": {
     "defaults": {
       "workspace": "/sandbox",
-      "model": "claude-sonnet-4-6",
+      "model": "openai/claude-sonnet-4-6",
       "provider": "cliproxy",
       "maxTokens": 4096,
       "contextWindowTokens": 262144,

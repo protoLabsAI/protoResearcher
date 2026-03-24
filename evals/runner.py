@@ -37,7 +37,7 @@ async def _call_gradio_api(prompt: str, session_id: str) -> str:
     """
     import httpx
 
-    async with httpx.AsyncClient(timeout=300) as client:
+    async with httpx.AsyncClient(timeout=600) as client:
         resp = await client.post(
             f"{_BASE_URL}/api/chat",
             json={"message": prompt, "session_id": session_id},
