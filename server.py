@@ -607,35 +607,11 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
         if result is not None:
             return result
 
-    # Guardrails — validate query scope
-    from guardrails import check_guardrail, cache_get, cache_set
-    guard = await check_guardrail(message)
-    if not guard["pass"]:
-        return _msg(
-            f"That doesn't seem to be about AI/ML research (score: {guard['score']}/100). "
-            f"I'm focused on tracking the latest in AI — try asking about papers, models, "
-            f"training methods, or inference optimization."
-        )
-
-    # Cache check
-    cached = cache_get(message)
-    if cached:
-        return [{"role": "assistant", "content": f"⚡ *(cached)*\n\n{cached}"}]
-
     # Route to backend
     if _BACKEND == "langgraph" and _graph is not None:
-        result = await _chat_langgraph(message, session_id)
+        return await _chat_langgraph(message, session_id)
     else:
-        result = await _chat_nanobot(message, session_id)
-
-    # Cache the response
-    response_text = "\n\n".join(
-        m["content"] for m in result if m.get("role") == "assistant" and m.get("content")
-    )
-    if response_text and len(response_text) > 100:
-        cache_set(message, response_text)
-
-    return result
+        return await _chat_nanobot(message, session_id)
 
 
 async def _chat_nanobot(message: str, session_id: str) -> list[dict[str, Any]]:
