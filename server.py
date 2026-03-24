@@ -761,22 +761,42 @@ def chat_streaming(message: str, history: list[dict], session_id: str):
 
 def _build_settings_callbacks() -> dict:
     def get_tools_list() -> str:
-        names = sorted(_agent.tools.tool_names)
+        if _BACKEND == "langgraph" and _graph is not None:
+            from tools.lg_tools import get_all_tools
+            tools = get_all_tools(_get_store())
+            names = sorted(t.name for t in tools)
+        elif _agent is not None:
+            names = sorted(_agent.tools.tool_names)
+        else:
+            names = []
         return "\n".join(f"- `{n}`" for n in names) or "No tools registered."
 
     def get_model_info() -> str:
-        model = _agent.model or "unknown"
-        effort = getattr(_agent.provider.generation, "reasoning_effort", None) or "default"
-        return f"**Model:** `{model}`\n\n**Reasoning:** {effort}"
+        if _BACKEND == "langgraph" and _graph_config is not None:
+            model = _graph_config.model_name
+            return f"**Model:** `{model}`\n\n**Backend:** LangGraph"
+        elif _agent is not None:
+            model = _agent.model or "unknown"
+            effort = getattr(_agent.provider.generation, "reasoning_effort", None) or "default"
+            return f"**Model:** `{model}`\n\n**Reasoning:** {effort}"
+        return "**Model:** unknown"
 
     def get_provider_choices() -> list[str]:
-        import os
         choices = []
-        api_base = _config.get_api_base(_config.agents.defaults.model)
-        if api_base:
-            detected = _detect_vllm_model(api_base)
-            label = detected or "local vLLM"
-            choices.append(f"local: {label}")
+        if _config is not None:
+            try:
+                api_base = _config.get_api_base(_config.agents.defaults.model)
+                if api_base:
+                    detected = _detect_vllm_model(api_base)
+                    label = detected or "local vLLM"
+                    choices.append(f"local: {label}")
+            except Exception:
+                pass
+        else:
+            # LangGraph backend — check vLLM directly
+            detected = _detect_vllm_model("http://host.docker.internal:8000/v1")
+            if detected:
+                choices.append(f"local: {detected}")
         # Claude models via CLIProxyAPI (OAuth)
         choices.extend([
             "claude: claude-sonnet-4-6",
@@ -786,38 +806,64 @@ def _build_settings_callbacks() -> dict:
         return choices
 
     def get_current_provider() -> str:
-        model = _agent.model or ""
-        display_model = model.replace("openai/", "")
-        if display_model.startswith("claude-"):
-            current = f"claude: {display_model}"
+        if _BACKEND == "langgraph" and _graph_config is not None:
+            model = _graph_config.model_name
+        elif _agent is not None:
+            model = (_agent.model or "").replace("openai/", "")
         else:
-            current = f"local: {display_model}"
-        # Ensure current value is in choices list
+            model = "unknown"
+        if model.startswith("claude-"):
+            current = f"claude: {model}"
+        else:
+            current = f"local: {model}"
         choices = get_provider_choices()
         if current not in choices and choices:
             return choices[0]
         return current
 
     def switch_provider(choice: str) -> str:
+        global _graph, _graph_config
         if not choice:
             return "No provider selected."
-
-        from nanobot.providers.base import GenerationSettings
-        from nanobot.providers.litellm_provider import LiteLLMProvider
 
         parts = choice.split(": ", 1)
         provider_type = parts[0]
         model_name = parts[1] if len(parts) > 1 else ""
 
+        if _BACKEND == "langgraph":
+            # Rebuild graph with new model
+            if _graph_config is not None:
+                if provider_type == "local":
+                    _graph_config.model_provider = "vllm"
+                    detected = _detect_vllm_model("http://host.docker.internal:8000/v1")
+                    _graph_config.model_name = detected or model_name
+                elif provider_type == "claude":
+                    _graph_config.model_provider = "cliproxy"
+                    _graph_config.model_name = model_name
+                else:
+                    return f"**Error:** Unknown provider: {provider_type}"
+
+                from graph.agent import create_researcher_graph
+                _graph = create_researcher_graph(
+                    config=_graph_config, knowledge_store=_get_store(),
+                    include_subagents=True,
+                )
+                return f"**Switched to:** `{_graph_config.model_name}` (graph rebuilt)"
+            return "**Error:** LangGraph config not initialized."
+
+        # Nanobot backend
+        from nanobot.providers.base import GenerationSettings
+        from nanobot.providers.litellm_provider import LiteLLMProvider
+
         if provider_type == "local":
             import litellm
-            api_base = _config.get_api_base(_config.agents.defaults.model)
+            api_base = _config.get_api_base(_config.agents.defaults.model) if _config else None
             detected = _detect_vllm_model(api_base) if api_base else None
             model = detected or model_name
-            # Restore global api_base for vLLM
-            litellm.api_base = api_base
+            if api_base:
+                litellm.api_base = api_base
 
-            p = _config.get_provider(_config.agents.defaults.model)
+            p = _config.get_provider(_config.agents.defaults.model) if _config else None
             provider = LiteLLMProvider(
                 api_key=p.api_key if p else None,
                 api_base=api_base,
@@ -826,8 +872,6 @@ def _build_settings_callbacks() -> dict:
                 provider_name="vllm",
             )
         elif provider_type == "claude":
-            # Route through CLIProxyAPI (OAuth proxy on port 8317)
-            # openai/ prefix tells litellm to use OpenAI protocol
             provider = LiteLLMProvider(
                 api_key="protoresearcher-internal",
                 api_base="http://127.0.0.1:8317/v1",
@@ -849,7 +893,12 @@ def _build_settings_callbacks() -> dict:
         return f"**Switched to:** `{provider.default_model}`"
 
     def get_subtitle() -> str:
-        display_model = (_agent.model or "").replace("openai/", "")
+        if _BACKEND == "langgraph" and _graph_config is not None:
+            display_model = _graph_config.model_name
+        elif _agent is not None:
+            display_model = (_agent.model or "").replace("openai/", "")
+        else:
+            display_model = "unknown"
         return f"**🔬 protoResearcher** &nbsp; `{display_model}`"
 
     def get_knowledge_stats() -> str:
