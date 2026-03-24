@@ -27,6 +27,26 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 
+_BASE_URL = os.environ.get("RESEARCHER_URL", "http://localhost:7870")
+
+
+async def _call_gradio_api(prompt: str, session_id: str) -> str:
+    """Call the running protoResearcher via /api/chat endpoint.
+
+    Requires the container to be running at RESEARCHER_URL.
+    """
+    import httpx
+
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.post(
+            f"{_BASE_URL}/api/chat",
+            json={"message": prompt, "session_id": session_id},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("response", "")
+
+
 def _load_tasks(filter_ids: list[str] | None = None) -> list[dict]:
     """Load evaluation tasks from tasks.json."""
     tasks_path = Path(__file__).parent / "tasks.json"
@@ -119,22 +139,11 @@ async def _run_single_task(
         print("SKIP (dry run)")
         return result
 
-    # Import chat function from server — this uses whichever backend
-    # is configured via AGENT_BACKEND env var.
-    from server import chat
-
+    # Call the running protoResearcher via Gradio API
     t0 = time.monotonic()
     try:
-        messages = await chat(prompt, session_id)
+        response_text = await _call_gradio_api(prompt, session_id)
         elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-        # Combine all assistant messages into the full response
-        response_parts = []
-        for msg in messages:
-            if msg.get("role") == "assistant" and msg.get("content"):
-                response_parts.append(msg["content"])
-        response_text = "\n\n".join(response_parts)
-
         status = "success"
         error = None
     except Exception as e:
@@ -143,14 +152,8 @@ async def _run_single_task(
         status = "error"
         error = str(e)
 
-    # Collect tool calls from audit log
+    # Tool calls from audit would need API access — skip for now
     tool_calls = []
-    try:
-        from audit import audit_logger
-        recent = audit_logger.get_recent(n=50, session_id=session_id)
-        tool_calls = _extract_tool_calls(recent, session_id)
-    except Exception:
-        pass
 
     score = _score_response(
         response_text,

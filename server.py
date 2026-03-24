@@ -1018,6 +1018,20 @@ def _main():
 
     fastapi_app = FastAPI(title="protoResearcher — protoLabs")
 
+    # Chat API endpoint (for evals and programmatic access)
+    from pydantic import BaseModel as PydanticBaseModel
+
+    class ChatRequest(PydanticBaseModel):
+        message: str
+        session_id: str = "api-default"
+
+    @fastapi_app.post("/api/chat")
+    async def _api_chat(req: ChatRequest):
+        result = await chat(req.message, req.session_id)
+        # Extract assistant content
+        parts = [m["content"] for m in result if m.get("role") == "assistant" and m.get("content")]
+        return {"response": "\n\n".join(parts), "messages": result}
+
     # Prometheus /metrics endpoint
     if metrics.is_enabled():
         try:

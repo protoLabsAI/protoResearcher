@@ -1,0 +1,103 @@
+{
+  "summary": {
+    "backend": "langgraph",
+    "timestamp": "2026-03-24T01:14:57.581624+00:00",
+    "dry_run": false,
+    "total_tasks": 3,
+    "passed": 3,
+    "failed": 0,
+    "total_elapsed_ms": 20909,
+    "avg_elapsed_ms": 6969,
+    "total_tool_calls": 0,
+    "by_category": {
+      "simple": {
+        "count": 3,
+        "passed": 3,
+        "avg_elapsed_ms": 6969,
+        "avg_response_length": 828,
+        "avg_tool_calls": 0.0
+      }
+    }
+  },
+  "results": [
+    {
+      "task_id": "simple_question",
+      "task_name": "Simple factual question",
+      "category": "simple",
+      "prompt": "What is a transformer architecture in machine learning? Keep your answer to 2-3 sentences.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "The Transformer is a neural network architecture introduced in the 2017 \"Attention Is All You Need\" paper, built entirely on **self-attention mechanisms** rather than recurrence or convolution. It processes input tokens in parallel by computing weighted relationships between all positions in a sequence, enabling it to capture long-range dependencies far more efficiently than RNNs. Today it is the foundational architecture behind virtually all large language models (GPT, LLaMA, Gemini, etc.) and has expanded into vision, audio, and multimodal domains.",
+      "elapsed_ms": 7056,
+      "tool_calls": [],
+      "expected_tools": [],
+      "score": {
+        "has_content": true,
+        "response_length": 556,
+        "has_structure": true,
+        "pattern_hits": [
+          "transformer",
+          "attention",
+          "model"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 7056
+      }
+    },
+    {
+      "task_id": "knowledge_topics",
+      "task_name": "Knowledge base topic query",
+      "category": "simple",
+      "prompt": "/topics",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "**Research Topics:**\n- **inference-optimization** (P1) \u2014 \n  Keywords: vLLM, speculative decoding, KV cache, PagedAttention, continuous batching | Last scanned: never\n- **moe-scaling** (P1) \u2014 \n  Keywords: mixture of experts, MoE, sparse models, expert routing | Last scanned: never\n- **open-source-models** (P1) \u2014 \n  Keywords: open source, open weights, model release, Qwen, Llama | Last scanned: never\n- **quantization** (P1) \u2014 \n  Keywords: quantization, GPTQ, AWQ, INT4, FP8 | Last scanned: never\n- **agentic-systems** (P2) \u2014 \n  Keywords: tool use, agent, function calling, multi-agent, MCP | Last scanned: never\n- **training-methods** (P2) \u2014 \n  Keywords: DPO, RLHF, LoRA, fine-tuning, alignment | Last scanned: never\n- **video-generation** (P2) \u2014 \n  Keywords: video generation, video diffusion, LTX, CogVideo, Sora | Last scanned: never\n- **multimodal** (P3) \u2014 \n  Keywords: vision-language, VLM, multimodal, image understanding | Last scanned: never",
+      "elapsed_ms": 32,
+      "tool_calls": [],
+      "expected_tools": [],
+      "score": {
+        "has_content": true,
+        "response_length": 951,
+        "has_structure": true,
+        "pattern_hits": [
+          "topic",
+          "research"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 32
+      }
+    },
+    {
+      "task_id": "edge_empty_input",
+      "task_name": "Edge case: empty input",
+      "category": "simple",
+      "prompt": "",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "I'm **protoResearcher** \u2014 your autonomous AI research assistant from protoLabs. \ud83e\udde0\n\nI'm online and ready to track, analyze, and synthesize the latest in AI/ML research.\n\n## What I can do for you:\n\n| Command | Description |\n|---------|-------------|\n| `/digest [topic]` | Generate a research digest on any topic |\n| `/recent [n]` | Show recent findings from the knowledge base |\n| `/papers [query]` | Search stored papers |\n| `/topics` | Show tracked research topics |\n| `/agenda` | Show research agenda with stats |\n| `/think <level>` | Adjust reasoning depth |\n\n## Quick actions:\n- **\"Research X\"** \u2014 Deep dive on any topic\n- **\"What's new in [area]?\"** \u2014 Quick scan\n- **\"Review this paper: [URL]\"** \u2014 Paper analysis\n- **\"Publish a digest\"** \u2014 Synthesize & post to Discord\n\n## My focus areas:\nLLM architectures \u00b7 MoE scaling \u00b7 Quantization \u00b7 Agentic systems \u00b7 Multimodal models \u00b7 Open-source releases \u00b7 Training methods \u00b7 Alignment\n\n---\n\nWhat would you like me to research today?",
+      "elapsed_ms": 13821,
+      "tool_calls": [],
+      "expected_tools": [],
+      "score": {
+        "has_content": true,
+        "response_length": 979,
+        "has_structure": true,
+        "pattern_hits": [],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 13821
+      }
+    }
+  ]
+}
