@@ -1,0 +1,326 @@
+{
+  "summary": {
+    "backend": "langgraph",
+    "timestamp": "2026-03-24T01:38:30.482482+00:00",
+    "dry_run": false,
+    "total_tasks": 10,
+    "passed": 7,
+    "failed": 3,
+    "total_elapsed_ms": 1362248,
+    "avg_elapsed_ms": 136224,
+    "total_tool_calls": 0,
+    "by_category": {
+      "simple": {
+        "count": 3,
+        "passed": 3,
+        "avg_elapsed_ms": 4541,
+        "avg_response_length": 810,
+        "avg_tool_calls": 0.0
+      },
+      "medium": {
+        "count": 4,
+        "passed": 3,
+        "avg_elapsed_ms": 121331,
+        "avg_response_length": 2086,
+        "avg_tool_calls": 0.0
+      },
+      "complex": {
+        "count": 3,
+        "passed": 1,
+        "avg_elapsed_ms": 287767,
+        "avg_response_length": 611,
+        "avg_tool_calls": 0.0
+      }
+    }
+  },
+  "results": [
+    {
+      "task_id": "simple_question",
+      "task_name": "Simple factual question",
+      "category": "simple",
+      "prompt": "What is a transformer architecture in machine learning? Keep your answer to 2-3 sentences.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "The Transformer is a neural network architecture introduced in the 2017 \"Attention Is All You Need\" paper, built entirely on **self-attention mechanisms** rather than recurrence or convolution. It processes input tokens in parallel by computing weighted relationships between all positions in a sequence, enabling it to capture long-range dependencies efficiently. Transformers are now the dominant architecture underlying virtually all modern LLMs (GPT, Claude, Llama, etc.) as well as vision and multimodal models.",
+      "elapsed_ms": 5075,
+      "tool_calls": [],
+      "expected_tools": [],
+      "score": {
+        "has_content": true,
+        "response_length": 516,
+        "has_structure": true,
+        "pattern_hits": [
+          "transformer",
+          "attention",
+          "model"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 5075
+      }
+    },
+    {
+      "task_id": "discord_scan",
+      "task_name": "Discord channel scan",
+      "category": "medium",
+      "prompt": "Scan the AI research Discord channel for recent posts about new model releases.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "Here's a summary of what I found. I should be transparent about the Discord situation:\n\n---\n\n## \ud83d\udce1 Discord Scan \u2014 Status Report\n\n### \u26a0\ufe0f Discord Channel Access Issue\nI was unable to connect to the AI research Discord channel \u2014 the channel/guild IDs I attempted returned **404 Not Found** errors. This likely means:\n- The bot token doesn't have access to the target server, **or**\n- The correct channel ID hasn't been configured in my environment yet\n\n> **Action needed:** Please provide the correct Discord channel ID (or guild ID) for the AI research channel you'd like me to monitor.\n\n---\n\n## \ud83d\udd0d Supplementary Scan \u2014 GitHub & HuggingFace\n\nWhile Discord was unavailable, I pulled signals from GitHub. Here's what's notable for **model releases**:\n\n### \ud83c\udd95 Notable Model-Adjacent Repos (as of March 24, 2026)\n\n| Repo | Signal | Stars |\n|------|--------|-------|\n| **Open-dLLM** (`pengzhangzhi`) | Open diffusion-based LLM \u2014 releasing pretraining, inference & checkpoints. Diffusion LMs are a hot frontier. | 556 \u2b50 |\n| **LlamaFactory** (`hiyouga`) | 100+ LLMs & VLMs fine-tuning hub \u2014 active, likely tracking latest model releases | 68.9k \u2b50 |\n| **LightRAG** | EMNLP 2025 \u2014 fast RAG with graph-based retrieval | 30.3k \u2b50 |\n\n### \ud83d\udd2c Significance Ratings\n- **Open-dLLM** \u2192 `[significant]` \u2014 Diffusion LMs are an emerging architecture worth watching; open weights + code is valuable.\n- **LlamaFactory** \u2192 `[incremental]` \u2014 Ongoing tooling updates, not a new model per se.\n\n---\n\n**Next steps I can take:**\n1. \ud83d\udd11 If you share the correct Discord channel ID, I'll re-run the scan immediately\n2. \ud83e\udd17 I can search HuggingFace directly for the latest trending model releases\n3. \ud83d\udcf0 I can browse AI news sites (e.g., Hugging Face blog, X/Twitter, Papers With Code) for model announcements\n\nWhat would you like me to do?",
+      "elapsed_ms": 82401,
+      "tool_calls": [],
+      "expected_tools": [
+        "discord_feed"
+      ],
+      "score": {
+        "has_content": true,
+        "response_length": 1794,
+        "has_structure": true,
+        "pattern_hits": [
+          "model",
+          "release"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 82401
+      }
+    },
+    {
+      "task_id": "hf_model_search",
+      "task_name": "HuggingFace model search",
+      "category": "medium",
+      "prompt": "Search HuggingFace for the latest text-to-image models released this week. Summarize the top 3.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "I now have enough to give a well-grounded summary. Here's the rundown:\n\n---\n\n## \ud83d\uddbc\ufe0f Top 3 Text-to-Image Models \u2014 Latest on HuggingFace\n\n> **Note:** HF's trending API is partially degraded right now, so I combined `created`, `downloads`, and GitHub activity signals to surface the most notable releases. Here's what's actually worth your attention:\n\n---\n\n### 1. \ud83e\udd47 HiDream-I1-Full \u2014 `HiDream-ai/HiDream-I1-Full`\n**Significance: [Significant]**\n\n| Attribute | Detail |\n|---|---|\n| **Params** | 17B Sparse Diffusion Transformer |\n| **License** | MIT (commercial-friendly) |\n| **Released** | May 2025 (E1.1 edit model: July 2025) |\n\n**What it is:** A 17B open-source image generation foundation model using a **Sparse Diffusion Transformer** architecture. Comes in three variants: `full`, `dev` (distilled), and `fast` (distilled, fewer steps).\n\n**Key results:**\n- **#1 on GenEval** (0.83 overall) \u2014 beats FLUX.1-dev (0.66), SD3 (0.74), Janus-Pro-7B (0.80)\n- **#1 on DPG-Bench** (85.89) \u2014 best prompt-following of any open-source model\n- **#1 on HPSv2.1** (33.82 avg) \u2014 best human preference score, beating FLUX.1-dev and Midjourney V5\n\n**Practical note:** Requires Flash Attention + CUDA 12.4. Uses LLaMA-3.1-8B as a text encoder (heavy!), so VRAM requirements are significant. The `fast` variant is the practical deployment target.\n\n---\n\n### 2. \ud83e\udd48 RAG-Diffusion \u2014 `NJU-PCALab/RAG-Diffusion`\n**Significance: [Significant]**\n\n| Attribute | Detail |\n|---|---|\n| **Stars** | 620 \u2b50 (fast-growing) |\n| **Venue** | ICCV 2025 |\n| **Lang** | Python |\n\n**What it is:** Region-Aware Text-to-Image Generation via **Hard Binding + Soft Refinement**. Enables precise spatial control \u2014 you specify regions in a prompt and the model binds objects to those regions with hard constraints, then refines globally for coherence.\n\n**Why it matters:** Compositional generation (multiple objects, specific layouts) is a known weakness of diffusion models. This directly attacks that. The \"hard binding\" approach is architecturall",
+      "elapsed_ms": 77577,
+      "tool_calls": [],
+      "expected_tools": [
+        "huggingface"
+      ],
+      "score": {
+        "has_content": true,
+        "response_length": 3695,
+        "has_structure": true,
+        "pattern_hits": [
+          "model",
+          "image"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 77577
+      }
+    },
+    {
+      "task_id": "github_trending",
+      "task_name": "GitHub trending search",
+      "category": "medium",
+      "prompt": "What are the trending AI/ML repositories on GitHub right now? Focus on inference and training frameworks.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "Here's what's trending in inference and training frameworks right now:\n\n---\n\n## \ud83d\udd25 GitHub Trending \u2014 Inference & Training Frameworks\n\n### \u26a1 Inference Frameworks\n\n| Repo | Stars | Signal |\n|------|-------|--------|\n| **sgl-project/sglang** | 24.9k | High-perf serving for LLMs + multimodal; CUDA/Blackwell support |\n| **microsoft/BitNet** | 36.4k | Official 1-bit LLM inference \u2014 extreme quantization |\n| **kvcache-ai/ktransformers** | 16.8k | Heterogeneous inference (CPU+GPU offload) + fine-tune |\n| **thu-pacman/chitu** | 4.1k | New high-perf serving framework, DeepSeek-focused |\n| **ModelTC/LightLLM** | 4.0k | Lightweight Python serving, notable for simplicity |\n| **NVIDIA/Model-Optimizer** | 2.2k | Quantization, pruning, distillation, speculative decoding |\n| **efeslab/Nanoflow** | 950 | Throughput-oriented serving, CUDA-native |\n\n**Standouts:**\n- **SGLang** is the one to watch \u2014 active Blackwell (H200/B200) support, DeepSeek integration, and rapidly closing the gap with vLLM on throughput benchmarks.\n- **ktransformers** is interesting for heterogeneous setups (running large models on CPU+GPU), relevant if we're doing anything on-prem with constrained VRAM.\n- **chitu** is a newer entrant from Tsinghua, worth monitoring \u2014 it's gaining stars fast.\n\n---\n\n### \ud83c\udfcb\ufe0f Training Frameworks\n\n| Repo | Stars | Signal |\n|------|-------|--------|\n| **THUDM/slime** | 4.9k | RL post-training / RL scaling for LLMs |\n| **hiyouga/EasyR1** | 4.8k | Multi-modal RL training on top of veRL |\n| **PeterGriffinJin/Search-R1** | 4.3k | RL training with interleaved search engine calls |\n| **radixark/miles** | 1.0k | Enterprise RL post-training (veRL fork) |\n| **EvolvingLMMs-Lab/LLaVA-OneVision-1.5** | 773 | Multimodal training, Qwen3-based |\n\n**Standouts:**\n- **The RL post-training wave is real.** slime, EasyR1, Search-R1, and miles are all variations on the same theme: scalable RLVR (RL with verifiable rewards) for reasoning. This is the DeepSeek-R1 effect playing out across the ecosystem.\n- **Sear",
+      "elapsed_ms": 25239,
+      "tool_calls": [],
+      "expected_tools": [
+        "github_trending"
+      ],
+      "score": {
+        "has_content": true,
+        "response_length": 2858,
+        "has_structure": true,
+        "pattern_hits": [
+          "github"
+        ],
+        "pattern_misses": [
+          "repository"
+        ],
+        "pattern_score": 0.5,
+        "elapsed_ms": 25239
+      }
+    },
+    {
+      "task_id": "knowledge_topics",
+      "task_name": "Knowledge base topic query",
+      "category": "simple",
+      "prompt": "/topics",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "**Research Topics:**\n- **inference-optimization** (P1) \u2014 \n  Keywords: vLLM, speculative decoding, KV cache, PagedAttention, continuous batching | Last scanned: never\n- **moe-scaling** (P1) \u2014 \n  Keywords: mixture of experts, MoE, sparse models, expert routing | Last scanned: never\n- **open-source-models** (P1) \u2014 \n  Keywords: open source, open weights, model release, Qwen, Llama | Last scanned: never\n- **quantization** (P1) \u2014 \n  Keywords: quantization, GPTQ, AWQ, INT4, FP8 | Last scanned: never\n- **agentic-systems** (P2) \u2014 \n  Keywords: tool use, agent, function calling, multi-agent, MCP | Last scanned: never\n- **training-methods** (P2) \u2014 \n  Keywords: DPO, RLHF, LoRA, fine-tuning, alignment | Last scanned: never\n- **video-generation** (P2) \u2014 \n  Keywords: video generation, video diffusion, LTX, CogVideo, Sora | Last scanned: never\n- **multimodal** (P3) \u2014 \n  Keywords: vision-language, VLM, multimodal, image understanding | Last scanned: never",
+      "elapsed_ms": 15,
+      "tool_calls": [],
+      "expected_tools": [],
+      "score": {
+        "has_content": true,
+        "response_length": 951,
+        "has_structure": true,
+        "pattern_hits": [
+          "topic",
+          "research"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 15
+      }
+    },
+    {
+      "task_id": "paper_analysis",
+      "task_name": "Paper analysis request",
+      "category": "medium",
+      "prompt": "Find and analyze the paper 'Attention Is All You Need'. Summarize its key contributions and impact.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "error",
+      "error": "",
+      "passed": false,
+      "response": "",
+      "elapsed_ms": 300107,
+      "tool_calls": [],
+      "expected_tools": [
+        "paper_reader"
+      ],
+      "score": {
+        "has_content": false,
+        "response_length": 0,
+        "has_structure": false,
+        "pattern_hits": [],
+        "pattern_misses": [
+          "attention",
+          "transformer",
+          "paper"
+        ],
+        "pattern_score": 0.0,
+        "elapsed_ms": 300107
+      }
+    },
+    {
+      "task_id": "multi_step_scan_analyze",
+      "task_name": "Multi-step: scan then analyze",
+      "category": "complex",
+      "prompt": "Scan the Discord AI channel for any papers posted today, then analyze the most interesting one in detail. Provide a structured summary with significance rating.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "error",
+      "error": "",
+      "passed": false,
+      "response": "",
+      "elapsed_ms": 300067,
+      "tool_calls": [],
+      "expected_tools": [
+        "discord_feed",
+        "paper_reader"
+      ],
+      "score": {
+        "has_content": false,
+        "response_length": 0,
+        "has_structure": false,
+        "pattern_hits": [],
+        "pattern_misses": [
+          "paper",
+          "summary"
+        ],
+        "pattern_score": 0.0,
+        "elapsed_ms": 300067
+      }
+    },
+    {
+      "task_id": "digest_generation",
+      "task_name": "Weekly digest generation",
+      "category": "complex",
+      "prompt": "Generate a research digest covering the latest findings in our knowledge base. Include papers, model releases, and key trends. Format it as a newsletter.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "The digest has been written, published to Discord, and stored in the knowledge base. Here's a summary of what was covered:\n\n---\n\n## \ud83d\udccb Digest Summary \u2014 March 24, 2026\n\n**11 papers \u00b7 47 findings \u00b7 4 prior digests synthesized**\n\n### \ud83d\udd11 Macro Themes This Cycle\n\n1. **Inference efficiency is the new frontier** \u2014 SSD/Saguaro (2\u00d7 speculative decoding speedup), ALPS (output length prediction with R\u00b2=0.94), ik_llama.cpp (26\u00d7 prompt processing), and TARo (inference-time alignment without fine-tuning) all point to the same conclusion: *the model weights are increasingly fixed; the gains are in how you run them.*\n\n2. **Qwen3 ecosystem reached full-stack maturity** \u2014 Reasoning (Qwen3), Vision (Qwen3-VL), Speech (Qwen3-TTS), Embeddings (Qwen3-VL-Embedding), and now Qwen3.5's hybrid Gated DeltaNet + MoE architecture. One vendor, one coherent stack.\n\n3. **Agentic framework race is consolidating** \u2014 OpenAI, Google, ByteDance, and LangChain all shipped major agentic SDKs in the same week (100K+ combined stars). The abstraction layer is being standardized.\n\n4. **Alignment has a hidden cost** \u2014 The Technion paper (2603.17218) is a quiet but important warning: RLHF/DPO-aligned models trade descriptive accuracy for normative compliance. Worth auditing before production deployment.\n\n### \ud83d\udccc Top 5 protoLabs Action Items\n| # | Action | Priority |\n|---|--------|----------|\n| 1 | Benchmark Qwen3.5 hybrid architecture for long-context tasks | \ud83d\udd34 High |\n| 2 | Prototype ALPS-based KV cache pre-allocation in inference pipeline | \ud83d\udd34 High |\n| 3 | Evaluate TARo for inference-time alignment without retraining | \ud83d\udfe0 Medium |\n| 4 | Audit production models for normative/descriptive alignment gap | \ud83d\udfe0 Medium |\n| 5 | Standardize on one agentic SDK (OpenAI or Google ADK) | \ud83d\udfe1 Watch |\n\nThe full newsletter is live in **#protolabs-research** on Discord. \ud83d\ude80",
+      "elapsed_ms": 263163,
+      "tool_calls": [],
+      "expected_tools": [
+        "research_memory"
+      ],
+      "score": {
+        "has_content": true,
+        "response_length": 1833,
+        "has_structure": true,
+        "pattern_hits": [
+          "digest",
+          "research"
+        ],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 263163
+      }
+    },
+    {
+      "task_id": "complex_multi_tool",
+      "task_name": "Complex multi-tool research",
+      "category": "complex",
+      "prompt": "Do a comprehensive survey of recent progress in mixture-of-experts LLMs: check HuggingFace for new MoE models, search GitHub for MoE training frameworks, and look for relevant papers. Compile everything into a structured research brief.",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "error",
+      "error": "",
+      "passed": false,
+      "response": "",
+      "elapsed_ms": 300071,
+      "tool_calls": [],
+      "expected_tools": [
+        "huggingface",
+        "github_trending",
+        "paper_reader"
+      ],
+      "score": {
+        "has_content": false,
+        "response_length": 0,
+        "has_structure": false,
+        "pattern_hits": [],
+        "pattern_misses": [
+          "mixture",
+          "expert",
+          "MoE"
+        ],
+        "pattern_score": 0.0,
+        "elapsed_ms": 300071
+      }
+    },
+    {
+      "task_id": "edge_empty_input",
+      "task_name": "Edge case: empty input",
+      "category": "simple",
+      "prompt": "",
+      "backend": "langgraph",
+      "dry_run": false,
+      "status": "success",
+      "error": null,
+      "passed": true,
+      "response": "I'm **protoResearcher** \u2014 your autonomous AI research assistant from protoLabs. \ud83e\udde0\n\nI'm online and ready to track, analyze, and synthesize the latest in AI/ML research.\n\n## What I can do for you:\n\n| Command | Description |\n|---------|-------------|\n| `/digest [topic]` | Generate a research digest on any topic |\n| `/recent [n]` | Show recent findings from the knowledge base |\n| `/papers [query]` | Search stored papers |\n| `/topics` | Show tracked research topics |\n| `/agenda` | Show research agenda with stats |\n| `/think <level>` | Adjust reasoning depth |\n\n## Quick actions:\n- **\"Research X\"** \u2014 Deep dive on any topic\n- **\"What's new in [area]?\"** \u2014 Quick scan\n- **\"Review this paper: [URL]\"** \u2014 Paper analysis\n- **\"Publish a digest\"** \u2014 Synthesize & post to Discord\n\n## My focus areas:\nLLM architectures \u00b7 MoE scaling \u00b7 Quantization \u00b7 Agentic systems \u00b7 Multimodal models \u00b7 RLHF/alignment \u00b7 Open-source releases\n\n---\n\nWhat would you like me to research today?",
+      "elapsed_ms": 8533,
+      "tool_calls": [],
+      "expected_tools": [],
+      "score": {
+        "has_content": true,
+        "response_length": 965,
+        "has_structure": true,
+        "pattern_hits": [],
+        "pattern_misses": [],
+        "pattern_score": 1.0,
+        "elapsed_ms": 8533
+      }
+    }
+  ]
+}
