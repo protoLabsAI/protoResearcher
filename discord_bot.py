@@ -244,8 +244,8 @@ async def _run_gateway():
                             "op": 2,
                             "d": {
                                 "token": _BOT_TOKEN,
-                                "intents": (1 << 9) | (1 << 15) | (1 << 0),
-                                # GUILD_MESSAGES | MESSAGE_CONTENT | GUILDS
+                                "intents": (1 << 0) | (1 << 9) | (1 << 10) | (1 << 15),
+                                # GUILDS | GUILD_MESSAGES | GUILD_MESSAGE_REACTIONS | MESSAGE_CONTENT
                                 "properties": {
                                     "os": "linux",
                                     "browser": "protoResearcher",
