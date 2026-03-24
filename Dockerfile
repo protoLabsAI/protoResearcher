@@ -56,9 +56,9 @@ COPY static/ /opt/protoresearcher/static/
 RUN mkdir -p /sandbox /tmp/sandbox /sandbox/audit /sandbox/knowledge /sandbox/papers \
     && chown -R sandbox:sandbox /sandbox /tmp/sandbox
 
-# CLIProxyAPI auth dir (persisted via volume)
-RUN mkdir -p /opt/.cliproxy \
-    && chown -R sandbox:sandbox /opt/.cliproxy
+# Persistent dirs (volumes mounted at runtime)
+RUN mkdir -p /opt/.cliproxy /opt/.cron \
+    && chown -R sandbox:sandbox /opt/.cliproxy /opt/.cron
 
 # Nanobot data dir
 RUN mkdir -p /home/sandbox/.nanobot \

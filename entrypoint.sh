@@ -6,6 +6,11 @@ echo "[entrypoint] Starting protoResearcher"
 # Create dirs inside tmpfs home
 mkdir -p /home/sandbox/.nanobot /home/sandbox/.local
 
+# Symlink persistent cron data into nanobot's expected location
+if [ -d /opt/.cron ]; then
+    ln -sf /opt/.cron /home/sandbox/.nanobot/cron
+fi
+
 # Ensure persistent volume dirs exist
 mkdir -p /sandbox/audit /sandbox/knowledge /sandbox/papers
 

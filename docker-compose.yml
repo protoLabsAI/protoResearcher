@@ -28,6 +28,7 @@ services:
       - protoresearcher-knowledge:/sandbox/knowledge
       - protoresearcher-audit:/sandbox/audit
       - protoresearcher-papers:/sandbox/papers
+      - protoresearcher-cron:/opt/.cron
       - protoresearcher-cliproxy:/opt/.cliproxy
       # Claude OAuth credentials (read-only)
       - ${HOME}/.claude:/opt/claude-creds:ro
@@ -98,6 +99,7 @@ services:
       - protoresearcher-audit:/sandbox/audit
       - protoresearcher-papers:/sandbox/papers
       - protoresearcher-lab:/sandbox/lab
+      - protoresearcher-cron:/opt/.cron
       # Host mounts for training
       - /mnt/models/huggingface:/mnt/models/huggingface:ro
       - /home/ava/dev/LLaMA-Factory:/opt/llama-factory:ro
@@ -146,5 +148,6 @@ volumes:
   protoresearcher-knowledge:
   protoresearcher-audit:
   protoresearcher-papers:
+  protoresearcher-cron:
   protoresearcher-cliproxy:
   protoresearcher-lab:
