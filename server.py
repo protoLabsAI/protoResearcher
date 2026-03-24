@@ -516,9 +516,23 @@ def _install_audit_wrapper():
 
     original_execute = _agent.tools.execute
 
+    # Map tool names to research phase spans for Langfuse
+    _TOOL_PHASE_MAP = {
+        "discord_feed": "explorer",
+        "huggingface": "explorer",
+        "github_trending": "explorer",
+        "web_search": "explorer",
+        "web_fetch": "explorer",
+        "browser": "explorer",
+        "paper_reader": "analyst",
+        "research_memory": "analyst",
+        "message": "writer",
+    }
+
     async def _audited_execute(name: str, params: dict[str, Any]) -> str:
         session_id = _current_session_id.get("")
         t0 = time.monotonic()
+        phase = _TOOL_PHASE_MAP.get(name, "general")
 
         # Capture message tool content so it can be surfaced in the chat
         if name == "message":
@@ -540,7 +554,7 @@ def _install_audit_wrapper():
                 result_summary=result_summary, duration_ms=duration_ms, success=success,
             )
             tracing.trace_tool_call(
-                tool_name=name, args=params, result=result_summary,
+                tool_name=f"{phase}:{name}", args=params, result=result_summary,
                 duration_ms=duration_ms, success=success, session_id=session_id,
             )
             metrics.record_tool_call(name, success, duration_ms / 1000)
@@ -552,7 +566,7 @@ def _install_audit_wrapper():
                 result_summary=str(exc)[:200], duration_ms=duration_ms, success=False,
             )
             tracing.trace_tool_call(
-                tool_name=name, args=params, result=str(exc)[:200],
+                tool_name=f"{phase}:{name}", args=params, result=str(exc)[:200],
                 duration_ms=duration_ms, success=False, session_id=session_id,
             )
             metrics.record_tool_call(name, False, duration_ms / 1000)
@@ -593,10 +607,35 @@ async def chat(message: str, session_id: str) -> list[dict[str, Any]]:
         if result is not None:
             return result
 
+    # Guardrails — validate query scope
+    from guardrails import check_guardrail, cache_get, cache_set
+    guard = await check_guardrail(message)
+    if not guard["pass"]:
+        return _msg(
+            f"That doesn't seem to be about AI/ML research (score: {guard['score']}/100). "
+            f"I'm focused on tracking the latest in AI — try asking about papers, models, "
+            f"training methods, or inference optimization."
+        )
+
+    # Cache check
+    cached = cache_get(message)
+    if cached:
+        return [{"role": "assistant", "content": f"⚡ *(cached)*\n\n{cached}"}]
+
+    # Route to backend
     if _BACKEND == "langgraph" and _graph is not None:
-        return await _chat_langgraph(message, session_id)
+        result = await _chat_langgraph(message, session_id)
     else:
-        return await _chat_nanobot(message, session_id)
+        result = await _chat_nanobot(message, session_id)
+
+    # Cache the response
+    response_text = "\n\n".join(
+        m["content"] for m in result if m.get("role") == "assistant" and m.get("content")
+    )
+    if response_text and len(response_text) > 100:
+        cache_set(message, response_text)
+
+    return result
 
 
 async def _chat_nanobot(message: str, session_id: str) -> list[dict[str, Any]]:

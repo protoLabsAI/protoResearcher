@@ -47,6 +47,7 @@ COPY metrics.py /opt/protoresearcher/metrics.py
 COPY chat_ui.py /opt/protoresearcher/chat_ui.py
 COPY server.py /opt/protoresearcher/server.py
 COPY discord_bot.py /opt/protoresearcher/discord_bot.py
+COPY guardrails.py /opt/protoresearcher/guardrails.py
 COPY entrypoint.sh /opt/protoresearcher/entrypoint.sh
 COPY config/ /opt/protoresearcher/config/
 COPY static/ /opt/protoresearcher/static/

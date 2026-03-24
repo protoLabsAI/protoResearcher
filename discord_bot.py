@@ -142,7 +142,9 @@ async def _do_research(channel_id: str, message_id: str, content: str, context: 
         f"- Use bullet lists instead of tables\n"
         f"- Bold with **text** is fine\n"
         f"- Use > for blockquotes\n"
-        f"- Keep sections short — Discord truncates long messages\n\n"
+        f"- Keep sections short — Discord truncates long messages\n"
+        f"- START your response with a **Reasoning Trace** section showing your research steps, like:\n"
+        f"  > 🔍 Scanned 3 sources → Found 5 relevant items → Graded 3 as significant → Synthesized below\n\n"
         f"{content}"
     )
     prompt = "\n\n".join(prompt_parts)

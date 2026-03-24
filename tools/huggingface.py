@@ -67,17 +67,19 @@ class HuggingFaceTool(Tool):
 
     async def execute(self, **kwargs: Any) -> str:
         action = kwargs["action"]
-
-        if action == "search_models":
-            return await self._search_models(kwargs)
-        elif action == "search_datasets":
-            return await self._search_datasets(kwargs)
-        elif action == "model_card":
-            return await self._model_card(kwargs)
-        elif action == "search_papers":
-            return await self._search_papers(kwargs)
-        else:
-            return f"Error: Unknown action '{action}'."
+        try:
+            if action == "search_models":
+                return await self._search_models(kwargs)
+            elif action == "search_datasets":
+                return await self._search_datasets(kwargs)
+            elif action == "model_card":
+                return await self._model_card(kwargs)
+            elif action == "search_papers":
+                return await self._search_papers(kwargs)
+            else:
+                return f"Error: Unknown action '{action}'."
+        except Exception as e:
+            return f"HuggingFace {action} failed: {e}. Try rephrasing your query."
 
     async def _search_models(self, kwargs: dict) -> str:
         query = kwargs.get("query", "")

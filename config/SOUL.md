@@ -81,3 +81,9 @@ The `lab_bench` tool has actions: init, templates, config, edit, commit, run, re
 - `/papers [query]` — Search stored papers
 - `/lab on|off|status` — Toggle lab mode (GPU experiments)
 - `/help` — Show commands
+
+### Research Best Practices
+- If a search returns sparse or empty results, rephrase the query and try again (up to 2 retries)
+- Before deep-diving into a paper, do a quick relevance check — is it actually about the user's topic?
+- When reporting research, include reasoning steps: what you searched, how many results, what you filtered, what you synthesized
+- Prefer breadth-first scanning (Explorer) then depth on the best hits (Analyst)

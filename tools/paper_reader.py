@@ -12,15 +12,40 @@ from nanobot.agent.tools.base import Tool
 _PAPERS_DIR = Path("/sandbox/papers")
 
 
+import re as _re
+
+# Common academic paper section headers
+_SECTION_PATTERNS = [
+    _re.compile(r'^(Abstract|ABSTRACT)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Introduction|INTRODUCTION)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Related Work|RELATED WORK|Background|BACKGROUND)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Method|METHODS?|Approach|APPROACH|Methodology|METHODOLOGY)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Experiment|EXPERIMENTS?|Evaluation|EVALUATION|Results|RESULTS)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Discussion|DISCUSSION)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Conclusion|CONCLUSIONS?|Summary|SUMMARY)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(References|REFERENCES|Bibliography)\b', _re.MULTILINE),
+    _re.compile(r'^(\d+\.?\s+)?(Appendix|APPENDIX)\b', _re.MULTILINE),
+]
+
+
+def _detect_sections(text: str) -> str:
+    """Add section tags to paper text for better chunking and retrieval."""
+    for pattern in _SECTION_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            section_name = match.group(0).strip().lstrip("0123456789. ")
+            text = text[:match.start()] + f"\n[SECTION: {section_name}]\n" + text[match.start():]
+    return text
+
+
 def _extract_text(pdf_path: Path, pages: str | None = None) -> str:
-    """Extract text from a PDF using PyMuPDF."""
+    """Extract text from a PDF using PyMuPDF with section detection."""
     import fitz  # PyMuPDF
 
     doc = fitz.open(str(pdf_path))
     total_pages = len(doc)
 
     if pages:
-        # Parse page range like "1-5" or "3"
         page_nums = set()
         for part in pages.split(","):
             part = part.strip()
@@ -44,7 +69,10 @@ def _extract_text(pdf_path: Path, pages: str | None = None) -> str:
             text_parts.append(f"--- Page {page_num + 1} ---\n{text}")
 
     doc.close()
-    return "\n\n".join(text_parts)
+    full_text = "\n\n".join(text_parts)
+
+    # Detect and tag sections for structured retrieval
+    return _detect_sections(full_text)
 
 
 def _resolve_path(path_or_id: str) -> Path | None:

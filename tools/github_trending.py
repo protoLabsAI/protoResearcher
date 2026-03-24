@@ -86,15 +86,17 @@ class GitHubTrendingTool(Tool):
 
     async def execute(self, **kwargs: Any) -> str:
         action = kwargs["action"]
-
-        if action == "search":
-            return await self._search(kwargs)
-        elif action == "recent_repos":
-            return await self._recent_repos(kwargs)
-        elif action == "releases":
-            return await self._releases(kwargs)
-        else:
-            return f"Error: Unknown action '{action}'."
+        try:
+            if action == "search":
+                return await self._search(kwargs)
+            elif action == "recent_repos":
+                return await self._recent_repos(kwargs)
+            elif action == "releases":
+                return await self._releases(kwargs)
+            else:
+                return f"Error: Unknown action '{action}'."
+        except Exception as e:
+            return f"GitHub {action} failed: {e}. Try rephrasing your query."
 
     async def _search(self, kwargs: dict) -> str:
         query = kwargs.get("query", "")
