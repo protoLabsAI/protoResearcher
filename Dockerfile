@@ -33,7 +33,7 @@ RUN ARCH=$(dpkg --print-architecture) \
 COPY nanobot/ /opt/nanobot/
 RUN pip install --no-cache-dir /opt/nanobot/ \
     gradio sqlite-vec httpx uvicorn langfuse prometheus-client PyMuPDF pyyaml \
-    langchain langchain-openai langgraph
+    langchain langchain-openai langgraph websockets
 
 # Install protoResearcher
 COPY tools/ /opt/protoresearcher/tools/
@@ -46,6 +46,7 @@ COPY tracing.py /opt/protoresearcher/tracing.py
 COPY metrics.py /opt/protoresearcher/metrics.py
 COPY chat_ui.py /opt/protoresearcher/chat_ui.py
 COPY server.py /opt/protoresearcher/server.py
+COPY discord_bot.py /opt/protoresearcher/discord_bot.py
 COPY entrypoint.sh /opt/protoresearcher/entrypoint.sh
 COPY config/ /opt/protoresearcher/config/
 COPY static/ /opt/protoresearcher/static/
