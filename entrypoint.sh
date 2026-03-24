@@ -36,31 +36,55 @@ fi
 mkdir -p /opt/.cliproxy
 cp /opt/protoresearcher/config/cliproxy-config.yaml /opt/.cliproxy/config.yaml
 
-# Inject OAuth token into CLIProxyAPI config
-if [ -f /home/sandbox/.claude/.credentials.json ]; then
+# Function to inject token into CLIProxyAPI config
+inject_token() {
     python3 -c "
 import json
 import yaml
 
-with open('/home/sandbox/.claude/.credentials.json') as f:
+with open('/opt/claude-creds/.credentials.json') as f:
     creds = json.load(f)
 token = creds.get('claudeAiOauth', {}).get('accessToken', '')
 
 with open('/opt/.cliproxy/config.yaml') as f:
     cfg = yaml.safe_load(f)
 
-if token:
+old_token = ''
+if cfg.get('claude-api-key'):
+    old_token = cfg['claude-api-key'][0].get('api-key', '')
+
+if token and token != old_token:
     cfg['claude-api-key'] = [{'api-key': token}]
     with open('/opt/.cliproxy/config.yaml', 'w') as f:
         yaml.dump(cfg, f, default_flow_style=False)
-    print('[entrypoint] Injected Claude OAuth token into CLIProxyAPI config')
-else:
-    print('[entrypoint] No OAuth token found for CLIProxyAPI')
+    print('[token-refresh] New OAuth token injected')
 " 2>/dev/null
-fi
+}
+
+# Initial token injection
+inject_token
 
 cli-proxy-api --config /opt/.cliproxy/config.yaml &
 echo "[entrypoint] CLIProxyAPI started on port 8317"
+
+# --- Token refresh loop ---
+# Watches the mounted ~/.claude credentials for changes.
+# CLIProxyAPI has a file watcher that auto-reloads config on change,
+# so we just need to update the config file when the token changes.
+(
+    LAST_MTIME=0
+    while true; do
+        sleep 300  # Check every 5 minutes
+        if [ -f /opt/claude-creds/.credentials.json ]; then
+            CURRENT_MTIME=$(stat -c %Y /opt/claude-creds/.credentials.json 2>/dev/null || echo 0)
+            if [ "$CURRENT_MTIME" != "$LAST_MTIME" ]; then
+                LAST_MTIME=$CURRENT_MTIME
+                inject_token
+            fi
+        fi
+    done
+) &
+echo "[entrypoint] Token refresh watcher started (every 5m)"
 
 # Lab mode setup (if GPU available)
 if [ -n "${LAB_GPU}" ] || command -v nvidia-smi &>/dev/null; then
