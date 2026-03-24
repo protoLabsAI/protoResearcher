@@ -136,7 +136,14 @@ async def _do_research(channel_id: str, message_id: str, content: str, context: 
         prompt_parts.append(f"Context from Discord user: {context}")
     prompt_parts.append(
         f"Research the following and provide a structured synthesis. "
-        f"Rate significance. Note practical implications for the protoLabs stack.\n\n{content}"
+        f"Rate significance. Note practical implications for the protoLabs stack.\n\n"
+        f"IMPORTANT FORMATTING RULES (this will be posted to Discord):\n"
+        f"- Do NOT use markdown tables (Discord doesn't render them)\n"
+        f"- Use bullet lists instead of tables\n"
+        f"- Bold with **text** is fine\n"
+        f"- Use > for blockquotes\n"
+        f"- Keep sections short — Discord truncates long messages\n\n"
+        f"{content}"
     )
     prompt = "\n\n".join(prompt_parts)
 
