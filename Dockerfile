@@ -2,7 +2,7 @@ FROM python:3.12-slim AS base
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl ca-certificates build-essential \
+    git curl ca-certificates build-essential gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root sandbox user

@@ -14,8 +14,8 @@ fi
 # Ensure persistent volume dirs exist
 mkdir -p /sandbox/audit /sandbox/knowledge /sandbox/papers
 
-# Copy configs from read-only image
-cp /opt/protoresearcher/config/nanobot-config.json /home/sandbox/.nanobot/config.json
+# Copy configs from read-only image, expanding env vars (e.g. MCP_AUTH_TOKEN)
+envsubst < /opt/protoresearcher/config/nanobot-config.json > /home/sandbox/.nanobot/config.json
 
 # Copy persona into workspace (nanobot reads SOUL.md from workspace)
 mkdir -p /sandbox

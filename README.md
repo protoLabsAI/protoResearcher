@@ -39,18 +39,51 @@ protoResearcher
 
 ## Quick Start
 
+### Prerequisites: Claude Code Authentication
+
+protoResearcher uses **CLIProxyAPI** to access Claude models through your existing Claude Code subscription — no separate API key needed. It works by reading the OAuth token from Claude Code's credential file on your host.
+
+**Setup:**
+
+1. **Install and authenticate Claude Code** on the host machine:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   claude  # This opens a browser for OAuth login
+   ```
+
+2. **Ensure the credentials file is readable** by the container (runs as uid 1001):
+   ```bash
+   chmod 644 ~/.claude/.credentials.json
+   ```
+   This file is mounted read-only into the container at `/opt/claude-creds/`. The entrypoint extracts the OAuth token and injects it into CLIProxyAPI's config. A background watcher refreshes the token every 5 minutes if the file changes.
+
+3. **Verify the file exists:**
+   ```bash
+   ls -la ~/.claude/.credentials.json
+   # Should show: -rw-r--r-- ... .credentials.json
+   ```
+
+> **How it works:** CLIProxyAPI runs inside the container on port 8317, exposing an OpenAI-compatible API that routes requests to Anthropic using your Claude Code OAuth token. The nanobot agent is configured to use this as its LLM provider (`cliproxy` in `nanobot-config.json`). This means LLM calls use your Claude Code subscription, not a separate API key.
+
+> **Alternative:** If you prefer to use an API key directly, set `ANTHROPIC_API_KEY` in your environment and change the nanobot config provider from `cliproxy` to `anthropic`.
+
 ### Docker (recommended)
 
 ```bash
+# Clone with submodules (nanobot is a git submodule)
+git clone --recursive https://github.com/protoLabsAI/protoResearcher
+cd protoResearcher
+
+# Start (basic mode)
 docker compose up --build
-# UI at http://localhost:7870
+# UI at http://localhost:7872
 ```
 
 ### With Lab Mode (GPU experiments)
 
 ```bash
 docker compose --profile lab up --build
-# UI at http://localhost:7870, then /lab on in chat
+# UI at http://localhost:7872, then /lab on in chat
 ```
 
 Requires NVIDIA GPU. Lab mode mounts LLaMA-Factory + HuggingFace model cache from the host.
@@ -63,6 +96,56 @@ python server.py --port 7870
 ```
 
 Requires vLLM running on `localhost:8000` (or configure `config/nanobot-config.json`).
+
+## Rabbit Hole Integration (MCP)
+
+protoResearcher connects to [rabbit-hole.io](https://github.com/protoLabsAI/rabbit-hole.io)'s MCP server via the Streamable HTTP transport. This gives the agent access to 12 research and media processing tools:
+
+| Tool | What it does |
+|------|--------------|
+| `graph_search` | Search existing entities in the knowledge graph |
+| `research_entity` | Full research pipeline (multi-source → extract → validate) |
+| `extract_entities` | LLM-based entity extraction from text |
+| `validate_bundle` | Bundle structural integrity check |
+| `ingest_bundle` | Push entities into the Neo4j knowledge graph |
+| `wikipedia_search` | Fetch Wikipedia articles |
+| `web_search` | DuckDuckGo instant answers |
+| `tavily_search` | Premium web search (requires TAVILY_API_KEY on MCP server) |
+| `ingest_url` | Ingest any URL (HTML, PDF, YouTube, audio) |
+| `ingest_file` | Ingest local files |
+| `transcribe_audio` | Audio transcription |
+| `extract_pdf` | PDF text extraction |
+
+### Setup
+
+1. **Start the rabbit-hole MCP server** (on the same host or network):
+   ```bash
+   cd /path/to/rabbit-hole.io
+   pnpm --filter @proto/mcp-server build
+
+   # Start with auth token
+   MCP_AUTH_TOKEN=$(openssl rand -hex 32) \
+   MCP_PORT=3398 \
+   pm2 start packages/mcp-server/dist/http-server.js --name rabbit-hole-mcp
+   ```
+
+2. **Pass the token to protoResearcher** via env:
+   ```bash
+   MCP_AUTH_TOKEN=<your-token> docker compose up -d
+   ```
+
+3. **Verify connectivity** — the container reaches the MCP server at `host.docker.internal:3398`. The agent's tools list will show `mcp_rabbit-hole_*` prefixed tools when connected.
+
+The MCP connection is configured in `config/nanobot-config.json` under `tools.mcpServers.rabbit-hole`. Nanobot connects lazily on the first agent loop.
+
+### Firewall Note
+
+If you're running UFW or iptables with a DROP policy, Docker containers may not be able to reach host ports. Allow traffic from Docker bridge networks:
+
+```bash
+sudo ufw allow from 10.0.0.0/8 to any port 3398 comment "MCP server from Docker"
+sudo ufw allow from 10.0.0.0/8 to any port 3399 comment "rabbit-hole from Docker"
+```
 
 ## Chat Commands
 
@@ -141,21 +224,26 @@ Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). W
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `MCP_AUTH_TOKEN` | For rabbit-hole integration | Bearer token for MCP server auth |
+| `ANTHROPIC_API_KEY` | No | Direct Anthropic API (alternative to CLIProxyAPI) |
 | `LANGFUSE_PUBLIC_KEY` | No | Langfuse tracing |
 | `LANGFUSE_SECRET_KEY` | No | Langfuse tracing |
 | `LANGFUSE_HOST` | No | Langfuse host (default: `http://host.docker.internal:3001`) |
 | `GITHUB_TOKEN` | No | GitHub API (higher rate limits) |
+| `DISCORD_BOT_TOKEN` | No | Discord channel reading |
+| `DISCORD_WEBHOOK_URL` | No | Discord digest publishing |
 | `LAB_GPU` | No | GPU ID for lab mode (default: `1`) |
+| `AGENT_BACKEND` | No | `nanobot` (default) or `langgraph` |
 
 ## Stack
 
 - **Agent**: nanobot (tool-calling agent loop, sessions, LiteLLM provider)
+- **LLM**: CLIProxyAPI → Claude Code OAuth (no API key needed) or direct Anthropic API
 - **UI**: Gradio 5 (dark theme, PWA)
 - **Knowledge**: SQLite + sqlite-vec (semantic search via Ollama embeddings)
 - **Training**: LLaMA-Factory with LoRA DPO on Qwen3.5-0.8B/2B
 - **Observability**: Langfuse tracing, Prometheus metrics, JSONL audit
 - **Container**: Docker with seccomp, read-only root, tmpfs workspace
-- **LLM**: vLLM (local, OpenAI-compatible)
 
 ## Part of protoLabs
 
