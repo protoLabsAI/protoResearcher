@@ -34,7 +34,7 @@ services:
       - ${HOME}/.claude:/opt/claude-creds:ro
 
     ports:
-      - "7870:7870"
+      - "7872:7870"
 
     # Network: host vLLM + Ollama access
     extra_hosts:
@@ -62,6 +62,8 @@ services:
       # Discord (optional, for reading channel feeds)
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      # Rabbit Hole MCP server auth token
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
 
     stdin_open: true
     tty: true

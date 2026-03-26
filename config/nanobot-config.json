@@ -50,6 +50,16 @@
       "pathAppend": ""
     },
     "restrictToWorkspace": true,
-    "mcpServers": {}
+    "mcpServers": {
+      "rabbit-hole": {
+        "type": "streamableHttp",
+        "url": "http://host.docker.internal:3398/mcp",
+        "headers": {
+          "Authorization": "Bearer ${MCP_AUTH_TOKEN}"
+        },
+        "toolTimeout": 60,
+        "enabledTools": ["*"]
+      }
+    }
   }
 }
