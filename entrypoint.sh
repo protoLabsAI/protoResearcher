@@ -42,14 +42,19 @@ mkdir -p /opt/.cliproxy
 cp /opt/protoresearcher/config/cliproxy-config.yaml /opt/.cliproxy/config.yaml
 
 # Function to inject token into CLIProxyAPI config
+# Always writes the config to trigger CLIProxyAPI's file watcher reload,
+# which forces it to re-validate auth state even if the token hasn't changed.
 inject_token() {
     python3 -c "
-import json
-import yaml
+import json, yaml, time
 
 with open('/opt/claude-creds/.credentials.json') as f:
     creds = json.load(f)
-token = creds.get('claudeAiOauth', {}).get('accessToken', '')
+
+oauth = creds.get('claudeAiOauth', {})
+token = oauth.get('accessToken', '')
+if not token:
+    return
 
 with open('/opt/.cliproxy/config.yaml') as f:
     cfg = yaml.safe_load(f)
@@ -58,11 +63,14 @@ old_token = ''
 if cfg.get('claude-api-key'):
     old_token = cfg['claude-api-key'][0].get('api-key', '')
 
-if token and token != old_token:
-    cfg['claude-api-key'] = [{'api-key': token}]
-    with open('/opt/.cliproxy/config.yaml', 'w') as f:
-        yaml.dump(cfg, f, default_flow_style=False)
-    print('[token-refresh] New OAuth token injected')
+cfg['claude-api-key'] = [{'api-key': token}]
+
+# Always rewrite to trigger file watcher (even if token unchanged)
+with open('/opt/.cliproxy/config.yaml', 'w') as f:
+    yaml.dump(cfg, f, default_flow_style=False)
+
+if token != old_token:
+    print(f'[token-refresh] New OAuth token injected at {time.strftime(\"%H:%M:%S\")}')
 " 2>/dev/null
 }
 
@@ -77,23 +85,19 @@ export OPENAI_API_KEY="protoresearcher-internal"
 export OPENAI_API_BASE="http://127.0.0.1:8317/v1"
 
 # --- Token refresh loop ---
-# Watches the mounted ~/.claude credentials for changes.
-# CLIProxyAPI has a file watcher that auto-reloads config on change,
-# so we just need to update the config file when the token changes.
+# Re-injects the OAuth token into CLIProxyAPI config every 60 seconds.
+# CLIProxyAPI's file watcher auto-reloads when the config changes.
+# We always re-inject (not just on mtime change) because:
+#   1. The host's Claude Code may refresh the token without changing mtime
+#   2. CLIProxyAPI's internal auth state can go stale even with a valid token
+#   3. 60s interval keeps the window of staleness small
 (
-    LAST_MTIME=0
     while true; do
-        sleep 300  # Check every 5 minutes
-        if [ -f /opt/claude-creds/.credentials.json ]; then
-            CURRENT_MTIME=$(stat -c %Y /opt/claude-creds/.credentials.json 2>/dev/null || echo 0)
-            if [ "$CURRENT_MTIME" != "$LAST_MTIME" ]; then
-                LAST_MTIME=$CURRENT_MTIME
-                inject_token
-            fi
-        fi
+        sleep 60
+        inject_token
     done
 ) &
-echo "[entrypoint] Token refresh watcher started (every 5m)"
+echo "[entrypoint] Token refresh watcher started (every 60s)"
 
 # Lab mode setup (if GPU available)
 if [ -n "${LAB_GPU}" ] || command -v nvidia-smi &>/dev/null; then
