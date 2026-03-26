@@ -46,7 +46,7 @@ cp /opt/protoresearcher/config/cliproxy-config.yaml /opt/.cliproxy/config.yaml
 # which forces it to re-validate auth state even if the token hasn't changed.
 inject_token() {
     python3 -c "
-import json, yaml, time
+import json, yaml, time, sys
 
 with open('/opt/claude-creds/.credentials.json') as f:
     creds = json.load(f)
@@ -54,7 +54,8 @@ with open('/opt/claude-creds/.credentials.json') as f:
 oauth = creds.get('claudeAiOauth', {})
 token = oauth.get('accessToken', '')
 if not token:
-    return
+    print('[token-refresh] No token found in credentials')
+    sys.exit(0)
 
 with open('/opt/.cliproxy/config.yaml') as f:
     cfg = yaml.safe_load(f)
@@ -71,30 +72,56 @@ with open('/opt/.cliproxy/config.yaml', 'w') as f:
 
 if token != old_token:
     print(f'[token-refresh] New OAuth token injected at {time.strftime(\"%H:%M:%S\")}')
-" 2>/dev/null
+else:
+    print('[token-refresh] Token unchanged')
+"
 }
 
-# Initial token injection
+# Inject token BEFORE starting CLIProxyAPI so it reads the config with
+# the token already present on boot. The file watcher doesn't reliably
+# detect changes on overlay/tmpfs filesystems.
 inject_token
 
 cli-proxy-api --config /opt/.cliproxy/config.yaml &
 echo "[entrypoint] CLIProxyAPI started on port 8317"
+
+# Wait for CLIProxyAPI to be ready with models
+for i in $(seq 1 15); do
+    MODEL_COUNT=$(curl -sf http://127.0.0.1:8317/v1/models -H "Authorization: Bearer protoresearcher-internal" 2>/dev/null | python3 -c "import sys,json; print(len(json.loads(sys.stdin.read()).get('data',[])))" 2>/dev/null || echo "0")
+    if [ "$MODEL_COUNT" -gt "0" ]; then
+        echo "[entrypoint] CLIProxyAPI ready ($MODEL_COUNT models)"
+        break
+    fi
+    sleep 1
+done
 
 # Set env vars for litellm to route through CLIProxyAPI
 export OPENAI_API_KEY="protoresearcher-internal"
 export OPENAI_API_BASE="http://127.0.0.1:8317/v1"
 
 # --- Token refresh loop ---
-# Re-injects the OAuth token into CLIProxyAPI config every 60 seconds.
-# CLIProxyAPI's file watcher auto-reloads when the config changes.
-# We always re-inject (not just on mtime change) because:
-#   1. The host's Claude Code may refresh the token without changing mtime
-#   2. CLIProxyAPI's internal auth state can go stale even with a valid token
-#   3. 60s interval keeps the window of staleness small
+# CLIProxyAPI's file watcher doesn't work on overlay/tmpfs.
+# Instead, we check if the token changed and restart CLIProxyAPI if so.
 (
+    LAST_TOKEN=""
     while true; do
         sleep 60
-        inject_token
+        if [ -f /opt/claude-creds/.credentials.json ]; then
+            NEW_TOKEN=$(python3 -c "
+import json
+with open('/opt/claude-creds/.credentials.json') as f:
+    print(json.load(f).get('claudeAiOauth',{}).get('accessToken',''))
+" 2>/dev/null)
+            if [ -n "$NEW_TOKEN" ] && [ "$NEW_TOKEN" != "$LAST_TOKEN" ]; then
+                LAST_TOKEN="$NEW_TOKEN"
+                inject_token
+                # Restart CLIProxyAPI to pick up the new token
+                kill $(pidof cli-proxy-api) 2>/dev/null
+                sleep 1
+                cli-proxy-api --config /opt/.cliproxy/config.yaml &
+                echo "[token-refresh] CLIProxyAPI restarted with new token"
+            fi
+        fi
     done
 ) &
 echo "[entrypoint] Token refresh watcher started (every 60s)"
