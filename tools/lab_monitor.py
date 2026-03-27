@@ -14,33 +14,18 @@ import httpx
 from nanobot.agent.tools.base import Tool
 
 _GITHUB_API = "https://api.github.com"
-_OWNER = "protoLabsAI"
+_REPO = "protoLabsAI/lab"
 
-# Repos to monitor
-_REPOS = {
-    "lab": "protoLabsAI/lab",
-    "mythxengine": "protoLabsAI/mythxengine",
-}
-
-# Paths of interest per repo
-_WATCH_PATHS = {
-    "lab": [
-        "experiments/",
-        "experiments/README.md",
-        "experiments/TODO.md",
-        "models/",
-        "training/",
-        "evals/",
-        "CLAUDE.md",
-    ],
-    "mythxengine": [
-        "services/pixelgen/",
-        "services/imagegen/",
-        "docs/spikes/",
-        "handoffs/",
-        "packages/tools/src/imagegen/",
-    ],
-}
+# Paths of interest
+_WATCH_PATHS = [
+    "experiments/",
+    "experiments/README.md",
+    "experiments/TODO.md",
+    "models/",
+    "training/",
+    "evals/",
+    "CLAUDE.md",
+]
 
 
 class LabMonitorTool(Tool):
@@ -57,8 +42,7 @@ class LabMonitorTool(Tool):
     @property
     def description(self) -> str:
         return (
-            "Monitor protoLabsAI/lab and mythxengine repos for new experiments, "
-            "docs, and changes. Actions:\n"
+            "Monitor protoLabsAI/lab for new experiments, docs, and changes. Actions:\n"
             "- recent_commits: Get commits since last check (or last N days)\n"
             "- read_file: Read a file from the repo (README, experiment index, etc.)\n"
             "- experiments: List active experiments from the lab index\n"
@@ -78,11 +62,6 @@ class LabMonitorTool(Tool):
                         "recent_commits", "read_file", "experiments",
                         "diff", "watch_paths", "changes_since",
                     ],
-                },
-                "repo": {
-                    "type": "string",
-                    "enum": ["lab", "mythxengine"],
-                    "description": "Which repo to query (default: lab).",
                 },
                 "path": {
                     "type": "string",
@@ -114,42 +93,31 @@ class LabMonitorTool(Tool):
             headers["Authorization"] = f"token {self._token}"
         return headers
 
-    def _repo_full(self, repo: str) -> str:
-        return _REPOS.get(repo, _REPOS["lab"])
-
     async def execute(self, **kwargs) -> str:
         action = kwargs.get("action", "")
-        repo = kwargs.get("repo", "lab")
-        repo_full = self._repo_full(repo)
 
         try:
             if action == "recent_commits":
                 return await self._recent_commits(
-                    repo_full, repo,
                     days=kwargs.get("days", 7),
                     path=kwargs.get("path", ""),
                     limit=kwargs.get("limit", 20),
                 )
             elif action == "read_file":
                 return await self._read_file(
-                    repo_full, kwargs.get("path", "README.md"),
+                    kwargs.get("path", "README.md"),
                 )
             elif action == "experiments":
-                return await self._read_file(
-                    _REPOS["lab"], "experiments/README.md",
-                )
+                return await self._read_file("experiments/README.md")
             elif action == "diff":
-                return await self._diff(
-                    repo_full, kwargs.get("sha", ""),
-                )
+                return await self._diff(kwargs.get("sha", ""))
             elif action == "watch_paths":
-                lines = [f"## Watched paths for {repo}:"]
-                for p in _WATCH_PATHS.get(repo, []):
+                lines = ["## Watched paths in protoLabsAI/lab:"]
+                for p in _WATCH_PATHS:
                     lines.append(f"  - {p}")
                 return "\n".join(lines)
             elif action == "changes_since":
                 return await self._changes_since(
-                    repo_full, repo,
                     since=kwargs.get("since", ""),
                     limit=kwargs.get("limit", 30),
                 )
@@ -159,8 +127,7 @@ class LabMonitorTool(Tool):
             return f"Error: {e}"
 
     async def _recent_commits(
-        self, repo_full: str, repo_key: str,
-        days: int = 7, path: str = "", limit: int = 20,
+        self, days: int = 7, path: str = "", limit: int = 20,
     ) -> str:
         since = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0
@@ -177,16 +144,16 @@ class LabMonitorTool(Tool):
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
-                f"{_GITHUB_API}/repos/{repo_full}/commits",
+                f"{_GITHUB_API}/repos/{_REPO}/commits",
                 headers=self._headers(), params=params,
             )
             r.raise_for_status()
             commits = r.json()
 
         if not commits:
-            return f"No commits in {repo_full} in the last {days} days."
+            return f"No commits in {_REPO} in the last {days} days."
 
-        lines = [f"## Recent commits in {repo_full} (last {days} days):\n"]
+        lines = [f"## Recent commits in {_REPO} (last {days} days):\n"]
         for c in commits[:limit]:
             sha = c["sha"][:8]
             msg = c["commit"]["message"].split("\n")[0]
@@ -194,15 +161,14 @@ class LabMonitorTool(Tool):
             author = c["commit"]["author"]["name"]
             lines.append(f"- `{sha}` {date} ({author}): {msg}")
 
-        # Update last checked
-        self._last_checked[repo_key] = datetime.now(timezone.utc).isoformat()
+        self._last_checked["lab"] = datetime.now(timezone.utc).isoformat()
 
         return "\n".join(lines)
 
-    async def _read_file(self, repo_full: str, path: str) -> str:
+    async def _read_file(self, path: str) -> str:
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
-                f"{_GITHUB_API}/repos/{repo_full}/contents/{path}",
+                f"{_GITHUB_API}/repos/{_REPO}/contents/{path}",
                 headers=self._headers(),
             )
             r.raise_for_status()
@@ -218,13 +184,13 @@ class LabMonitorTool(Tool):
         else:
             return f"Cannot read {path}: unsupported encoding"
 
-    async def _diff(self, repo_full: str, sha: str) -> str:
+    async def _diff(self, sha: str) -> str:
         if not sha:
             return "Error: 'sha' is required for diff action."
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
-                f"{_GITHUB_API}/repos/{repo_full}/commits/{sha}",
+                f"{_GITHUB_API}/repos/{_REPO}/commits/{sha}",
                 headers=self._headers(),
             )
             r.raise_for_status()
@@ -244,13 +210,11 @@ class LabMonitorTool(Tool):
         return "\n".join(lines)
 
     async def _changes_since(
-        self, repo_full: str, repo_key: str,
-        since: str = "", limit: int = 30,
+        self, since: str = "", limit: int = 30,
     ) -> str:
         if not since:
             return "Error: 'since' date is required (e.g. 2026-03-20)."
 
-        watch = _WATCH_PATHS.get(repo_key, [])
         params: dict[str, Any] = {
             "since": f"{since}T00:00:00Z",
             "per_page": 100,
@@ -258,7 +222,7 @@ class LabMonitorTool(Tool):
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
-                f"{_GITHUB_API}/repos/{repo_full}/commits",
+                f"{_GITHUB_API}/repos/{_REPO}/commits",
                 headers=self._headers(), params=params,
             )
             r.raise_for_status()
@@ -268,10 +232,9 @@ class LabMonitorTool(Tool):
         relevant = []
         for c in all_commits:
             sha = c["sha"]
-            # Fetch files for each commit
             async with httpx.AsyncClient(timeout=15.0) as client:
                 cr = await client.get(
-                    f"{_GITHUB_API}/repos/{repo_full}/commits/{sha}",
+                    f"{_GITHUB_API}/repos/{_REPO}/commits/{sha}",
                     headers=self._headers(),
                 )
                 if cr.status_code != 200:
@@ -280,7 +243,7 @@ class LabMonitorTool(Tool):
 
             touched = [
                 f["filename"] for f in files
-                if any(f["filename"].startswith(wp) for wp in watch)
+                if any(f["filename"].startswith(wp) for wp in _WATCH_PATHS)
             ]
             if touched:
                 msg = c["commit"]["message"].split("\n")[0]
@@ -291,9 +254,9 @@ class LabMonitorTool(Tool):
                 break
 
         if not relevant:
-            return f"No changes to watched paths in {repo_full} since {since}."
+            return f"No changes to watched paths in {_REPO} since {since}."
 
-        lines = [f"## Changes to watched paths in {repo_full} since {since}:\n"]
+        lines = [f"## Changes to watched paths in {_REPO} since {since}:\n"]
         for sha, date, msg, files in relevant:
             lines.append(f"### `{sha}` {date}: {msg}")
             for f in files[:5]:

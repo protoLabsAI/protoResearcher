@@ -218,14 +218,13 @@ def create_lab_bench_tool():
 @tool
 async def lab_monitor(
     action: str,
-    repo: str = "lab",
     path: str = "",
     sha: str = "",
     days: int = 7,
     since: str = "",
     limit: int = 20,
 ) -> str:
-    """Monitor protoLabsAI/lab and mythxengine repos for new experiments, docs, and changes.
+    """Monitor protoLabsAI/lab for new experiments, docs, and changes.
 
     - recent_commits: Get commits since last check (or last N days)
     - read_file: Read a file from the repo (README, experiment index, etc.)
@@ -235,7 +234,7 @@ async def lab_monitor(
     - changes_since: Get all changes to watched paths since a date
     """
     return await _lab_monitor.execute(
-        action=action, repo=repo, path=path, sha=sha,
+        action=action, path=path, sha=sha,
         days=days, since=since, limit=limit,
     )
 
