@@ -14,6 +14,7 @@ from tools.huggingface import HuggingFaceTool
 from tools.github_trending import GitHubTrendingTool
 from tools.research_memory import ResearchMemoryTool
 from tools.browser import BrowserTool
+from tools.lab_monitor import LabMonitorTool
 
 
 # Instantiate underlying tool classes (stateless singletons)
@@ -22,6 +23,7 @@ _paper_reader = PaperReaderTool()
 _huggingface = HuggingFaceTool()
 _github_trending = GitHubTrendingTool()
 _browser = BrowserTool()
+_lab_monitor = LabMonitorTool()
 
 
 @tool
@@ -213,6 +215,31 @@ def create_lab_bench_tool():
     return lab_bench
 
 
+@tool
+async def lab_monitor(
+    action: str,
+    repo: str = "lab",
+    path: str = "",
+    sha: str = "",
+    days: int = 7,
+    since: str = "",
+    limit: int = 20,
+) -> str:
+    """Monitor protoLabsAI/lab and mythxengine repos for new experiments, docs, and changes.
+
+    - recent_commits: Get commits since last check (or last N days)
+    - read_file: Read a file from the repo (README, experiment index, etc.)
+    - experiments: List active experiments from the lab index
+    - diff: Show what changed in a specific commit
+    - watch_paths: Show which paths are monitored
+    - changes_since: Get all changes to watched paths since a date
+    """
+    return await _lab_monitor.execute(
+        action=action, repo=repo, path=path, sha=sha,
+        days=days, since=since, limit=limit,
+    )
+
+
 def get_all_tools(knowledge_store=None):
     """Get all research tools as LangChain tool objects."""
     tools = [
@@ -221,6 +248,7 @@ def get_all_tools(knowledge_store=None):
         huggingface,
         github_trending,
         browser,
+        lab_monitor,
         create_research_memory_tool(knowledge_store),
     ]
     return tools
