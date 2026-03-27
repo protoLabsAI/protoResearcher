@@ -434,15 +434,24 @@ async def _handle_message(data: dict, bot_id: str):
     # Gather context from multiple sources
     context_parts = []
 
-    # 1. If inside a thread, fetch recent thread history for conversation context
+    # 1. Fetch surrounding context based on channel type
     #    Discord thread types: 11 = public thread, 12 = private thread
     channel_info = await _get_channel(channel_id)
     is_thread = channel_info and channel_info.get("type") in (11, 12)
     if is_thread:
+        # In a thread: fetch OP + thread history
         thread_context = await _get_thread_context(channel_id, message_id)
         if thread_context:
             context_parts.append(f"--- Thread conversation ---\n{thread_context}")
             _log(f"  Loaded thread context ({len(thread_context)} chars)")
+    else:
+        # In a regular channel: fetch last few messages for surrounding context
+        recent = await _api_request("GET", f"/channels/{channel_id}/messages?before={message_id}&limit=5")
+        if recent and isinstance(recent, list):
+            lines = [_format_message(m) for m in reversed(recent) if _format_message(m)]
+            if lines:
+                context_parts.append(f"--- Recent channel messages ---\n" + "\n\n".join(lines))
+                _log(f"  Loaded channel context ({len(lines)} messages)")
 
     # 2. If this is a reply, fetch the referenced message
     ref = data.get("message_reference")
