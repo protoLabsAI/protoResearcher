@@ -93,6 +93,38 @@ async def _get_bot_user() -> dict | None:
     return await _api_request("GET", "/users/@me")
 
 
+async def _get_channel(channel_id: str) -> dict | None:
+    """Fetch channel metadata (to detect threads)."""
+    return await _api_request("GET", f"/channels/{channel_id}")
+
+
+async def _get_thread_context(channel_id: str, before_message_id: str, limit: int = 15) -> str:
+    """Fetch recent messages from a thread/channel for conversation context."""
+    data = await _api_request("GET", f"/channels/{channel_id}/messages?before={before_message_id}&limit={limit}")
+    if not data or not isinstance(data, list):
+        return ""
+
+    # Build context from oldest to newest
+    lines = []
+    for msg in reversed(data):
+        author_name = msg.get("author", {}).get("username", "unknown")
+        is_bot = msg.get("author", {}).get("bot", False)
+        text = msg.get("content", "")
+        # Include embed info
+        for embed in msg.get("embeds", []):
+            if embed.get("url"):
+                text += f"\n{embed['url']}"
+            if embed.get("title"):
+                text += f"\n{embed['title']}"
+            if embed.get("description"):
+                text += f"\n{embed['description'][:300]}"
+        if text.strip():
+            prefix = "🤖 protoResearcher" if is_bot else f"@{author_name}"
+            lines.append(f"{prefix}: {text.strip()}")
+
+    return "\n\n".join(lines)
+
+
 async def _reply(channel_id: str, message_id: str, content: str):
     """Reply to a message in Discord."""
     # Split long messages
@@ -373,18 +405,34 @@ async def _handle_message(data: dict, bot_id: str):
 
     _log(f"🔬 Mention trigger: channel={channel_id} from={author.get('username')}")
 
-    # If this is a reply, fetch the referenced message for context
+    # Gather context from multiple sources
+    context_parts = []
+
+    # 1. If inside a thread, fetch recent thread history for conversation context
+    #    Discord thread types: 11 = public thread, 12 = private thread
+    channel_info = await _get_channel(channel_id)
+    is_thread = channel_info and channel_info.get("type") in (11, 12)
+    if is_thread:
+        thread_context = await _get_thread_context(channel_id, message_id)
+        if thread_context:
+            context_parts.append(f"--- Thread conversation ---\n{thread_context}")
+            _log(f"  Loaded thread context ({len(thread_context)} chars)")
+
+    # 2. If this is a reply, fetch the referenced message
     ref = data.get("message_reference")
-    context_content = ""
     if ref and ref.get("message_id"):
         ref_msg = await _get_message(channel_id, ref["message_id"])
         if ref_msg:
-            context_content = ref_msg.get("content", "")
+            ref_content = ref_msg.get("content", "")
             for embed in ref_msg.get("embeds", []):
                 if embed.get("url"):
-                    context_content += f"\n{embed['url']}"
+                    ref_content += f"\n{embed['url']}"
                 if embed.get("description"):
-                    context_content += f"\n{embed['description'][:500]}"
+                    ref_content += f"\n{embed['description'][:500]}"
+            if ref_content.strip():
+                context_parts.append(f"--- Replied-to message ---\n{ref_content.strip()}")
+
+    context_content = "\n\n".join(context_parts)
 
     if not clean_content and not context_content:
         await _reply(channel_id, message_id,
@@ -395,9 +443,9 @@ async def _handle_message(data: dict, bot_id: str):
                      "- Reply to a message and @mention me for context")
         return
 
-    # Build the research input
+    # Build the research input with all available context
     if context_content and clean_content:
-        research_content = f"{context_content}\n\nUser's question: {clean_content}"
+        research_content = f"{context_content}\n\n--- User's question ---\n{clean_content}"
     elif context_content:
         research_content = context_content
     else:
