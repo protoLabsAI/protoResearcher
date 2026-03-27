@@ -46,15 +46,18 @@ protoResearcher uses **CLIProxyAPI** to access Claude models through your existi
 **Setup:**
 
 1. **Install and authenticate Claude Code** on the host machine:
+
    ```bash
    npm install -g @anthropic-ai/claude-code
    claude  # This opens a browser for OAuth login
    ```
 
 2. **Ensure the credentials file is readable** by the container (runs as uid 1001):
+
    ```bash
    chmod 644 ~/.claude/.credentials.json
    ```
+
    This file is mounted read-only into the container at `/opt/claude-creds/`. The entrypoint extracts the OAuth token and injects it into CLIProxyAPI's config. A background watcher refreshes the token every 5 minutes if the file changes.
 
 3. **Verify the file exists:**
@@ -101,24 +104,25 @@ Requires vLLM running on `localhost:8000` (or configure `config/nanobot-config.j
 
 protoResearcher connects to [rabbit-hole.io](https://github.com/protoLabsAI/rabbit-hole.io)'s MCP server via the Streamable HTTP transport. This gives the agent access to 12 research and media processing tools:
 
-| Tool | What it does |
-|------|--------------|
-| `graph_search` | Search existing entities in the knowledge graph |
-| `research_entity` | Full research pipeline (multi-source → extract → validate) |
-| `extract_entities` | LLM-based entity extraction from text |
-| `validate_bundle` | Bundle structural integrity check |
-| `ingest_bundle` | Push entities into the Neo4j knowledge graph |
-| `wikipedia_search` | Fetch Wikipedia articles |
-| `web_search` | DuckDuckGo instant answers |
-| `tavily_search` | Premium web search (requires TAVILY_API_KEY on MCP server) |
-| `ingest_url` | Ingest any URL (HTML, PDF, YouTube, audio) |
-| `ingest_file` | Ingest local files |
-| `transcribe_audio` | Audio transcription |
-| `extract_pdf` | PDF text extraction |
+| Tool               | What it does                                               |
+| ------------------ | ---------------------------------------------------------- |
+| `graph_search`     | Search existing entities in the knowledge graph            |
+| `research_entity`  | Full research pipeline (multi-source → extract → validate) |
+| `extract_entities` | LLM-based entity extraction from text                      |
+| `validate_bundle`  | Bundle structural integrity check                          |
+| `ingest_bundle`    | Push entities into the Neo4j knowledge graph               |
+| `wikipedia_search` | Fetch Wikipedia articles                                   |
+| `web_search`       | DuckDuckGo instant answers                                 |
+| `tavily_search`    | Premium web search (requires TAVILY_API_KEY on MCP server) |
+| `ingest_url`       | Ingest any URL (HTML, PDF, YouTube, audio)                 |
+| `ingest_file`      | Ingest local files                                         |
+| `transcribe_audio` | Audio transcription                                        |
+| `extract_pdf`      | PDF text extraction                                        |
 
 ### Setup
 
 1. **Start the rabbit-hole MCP server** (on the same host or network):
+
    ```bash
    cd /path/to/rabbit-hole.io
    pnpm --filter @proto/mcp-server build
@@ -130,6 +134,7 @@ protoResearcher connects to [rabbit-hole.io](https://github.com/protoLabsAI/rabb
    ```
 
 2. **Pass the token to protoResearcher** via env:
+
    ```bash
    MCP_AUTH_TOKEN=<your-token> docker compose up -d
    ```
@@ -147,18 +152,46 @@ sudo ufw allow from 10.0.0.0/8 to any port 3398 comment "MCP server from Docker"
 sudo ufw allow from 10.0.0.0/8 to any port 3399 comment "rabbit-hole from Docker"
 ```
 
+## API — Trigger from Other Agents
+
+protoResearcher exposes an HTTP API at `http://localhost:7872/api/chat`. Any agent or script can trigger research tasks.
+
+```
+POST http://localhost:7872/api/chat
+Content-Type: application/json
+
+{"message": "<command or natural language>"}
+```
+
+```json
+// Response
+{
+  "response": "Markdown-formatted response text",
+  "messages": [{ "role": "assistant", "content": "..." }]
+}
+```
+
+```bash
+# Examples
+curl -s http://localhost:7872/api/chat -H "Content-Type: application/json" \
+  -d '{"message": "/agenda"}'
+
+curl -s http://localhost:7872/api/chat -H "Content-Type: application/json" \
+  -d '{"message": "What are the latest developments in MoE architectures?"}'
+```
+
 ## Chat Commands
 
-| Command | Description |
-|---------|-------------|
-| `/topics` | Show tracked research topics |
-| `/agenda` | Research agenda with stats |
-| `/papers [query]` | Search stored papers |
-| `/recent [n]` | Show recent findings |
+| Command                | Description                       |
+| ---------------------- | --------------------------------- |
+| `/topics`              | Show tracked research topics      |
+| `/agenda`              | Research agenda with stats        |
+| `/papers [query]`      | Search stored papers              |
+| `/recent [n]`          | Show recent findings              |
 | `/lab on\|off\|status` | Toggle lab mode (GPU experiments) |
-| `/think <level>` | Set reasoning effort |
-| `/tools` | List registered tools |
-| `/help` | Show all commands |
+| `/think <level>`       | Set reasoning effort              |
+| `/tools`               | List registered tools             |
+| `/help`                | Show all commands                 |
 
 ## Lab Mode
 
@@ -182,10 +215,10 @@ Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). W
 
 ### Templates
 
-| Template | Model | Method | Description |
-|----------|-------|--------|-------------|
-| `dpo_qwen_0.8b` | Qwen3.5-0.8B | LoRA DPO | Fast iteration, tiny model |
-| `dpo_qwen_2b` | Qwen3.5-2B | LoRA DPO | More capacity, same dataset |
+| Template        | Model        | Method   | Description                 |
+| --------------- | ------------ | -------- | --------------------------- |
+| `dpo_qwen_0.8b` | Qwen3.5-0.8B | LoRA DPO | Fast iteration, tiny model  |
+| `dpo_qwen_2b`   | Qwen3.5-2B   | LoRA DPO | More capacity, same dataset |
 
 ### Example session
 
@@ -222,18 +255,18 @@ Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). W
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MCP_AUTH_TOKEN` | For rabbit-hole integration | Bearer token for MCP server auth |
-| `ANTHROPIC_API_KEY` | No | Direct Anthropic API (alternative to CLIProxyAPI) |
-| `LANGFUSE_PUBLIC_KEY` | No | Langfuse tracing |
-| `LANGFUSE_SECRET_KEY` | No | Langfuse tracing |
-| `LANGFUSE_HOST` | No | Langfuse host (default: `http://host.docker.internal:3001`) |
-| `GITHUB_TOKEN` | No | GitHub API (higher rate limits) |
-| `DISCORD_BOT_TOKEN` | No | Discord channel reading |
-| `DISCORD_WEBHOOK_URL` | No | Discord digest publishing |
-| `LAB_GPU` | No | GPU ID for lab mode (default: `1`) |
-| `AGENT_BACKEND` | No | `nanobot` (default) or `langgraph` |
+| Variable              | Required                    | Description                                                 |
+| --------------------- | --------------------------- | ----------------------------------------------------------- |
+| `MCP_AUTH_TOKEN`      | For rabbit-hole integration | Bearer token for MCP server auth                            |
+| `ANTHROPIC_API_KEY`   | No                          | Direct Anthropic API (alternative to CLIProxyAPI)           |
+| `LANGFUSE_PUBLIC_KEY` | No                          | Langfuse tracing                                            |
+| `LANGFUSE_SECRET_KEY` | No                          | Langfuse tracing                                            |
+| `LANGFUSE_HOST`       | No                          | Langfuse host (default: `http://host.docker.internal:3001`) |
+| `GITHUB_TOKEN`        | No                          | GitHub API (higher rate limits)                             |
+| `DISCORD_BOT_TOKEN`   | No                          | Discord channel reading                                     |
+| `DISCORD_WEBHOOK_URL` | No                          | Discord digest publishing                                   |
+| `LAB_GPU`             | No                          | GPU ID for lab mode (default: `1`)                          |
+| `AGENT_BACKEND`       | No                          | `nanobot` (default) or `langgraph`                          |
 
 ## Stack
 
@@ -247,4 +280,10 @@ Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). W
 
 ## Part of protoLabs
 
-This is a research tool in the [protoLabs](https://protolabs.studio) AI stack, running on ava-ai (2x RTX PRO 6000 Blackwell, 192 GB VRAM).
+protoResearcher is part of the [protoLabs](https://protolabs.studio) autonomous development studio.
+
+| Agent               | Role                                              |
+| ------------------- | ------------------------------------------------- |
+| **Ava**             | Chief of Staff — orchestration and strategy       |
+| **Quinn**           | QA Engineer — verification and release management |
+| **protoResearcher** | Research — AI/ML paper tracking and analysis      |
