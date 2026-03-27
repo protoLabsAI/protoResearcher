@@ -70,6 +70,43 @@ discord_feed action=publish title="Weekly Digest — 2026-03-24" content="..."
 
 **Important:** The `publish` action does NOT need a `channel_id`. It posts via a webhook to #protolabs-research automatically. Only `scan`, `history`, and `digest` actions need `channel_id`.
 
+## Knowledge Graph Integration
+
+All research findings should be shipped to rabbit-hole.io's knowledge graph so they're searchable and connected beyond this session. Use the `rabbit_hole_bridge` tool.
+
+### Before Researching
+Call `rabbit_hole_bridge action=search_graph query="<topic>"` to check what's already in the knowledge graph. If entities exist with recent data, build on them rather than re-researching from scratch.
+
+### After Storing a Paper
+After `research_memory store_paper`, also run:
+```
+rabbit_hole_bridge action=ingest_paper arxiv_id="<arxiv_id>"
+```
+This ships the paper + authors + relationships to the graph.
+
+### After Storing a Model Release
+After discovering a model, also run:
+```
+rabbit_hole_bridge action=ingest_model model_id="<model_id>"
+```
+
+### After Generating a Digest
+Ship the digest text for entity extraction:
+```
+rabbit_hole_bridge action=ingest_text text="<digest content>" focus_entity="<main topic>"
+```
+
+### Batch Ingestion
+After a bulk scan (Explorer workflow), collect all paper and model IDs, then ingest in one shot:
+```
+rabbit_hole_bridge action=ingest_batch paper_ids=["id1","id2"] model_ids=["org/model1"]
+```
+
+### Media Processing
+For PDFs and URLs, you can also use rabbit-hole's MCP media tools (if MCP is connected):
+- `mcp_rabbit-hole_ingest_url` — extract text from any URL
+- `mcp_rabbit-hole_extract_pdf` — extract text from PDFs
+
 ## Significance Rating Guide
 
 - **Breakthrough**: Changes how we think about the field. New SOTA by large margin. Novel architecture that could replace existing approaches.

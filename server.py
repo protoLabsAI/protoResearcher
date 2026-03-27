@@ -1004,12 +1004,15 @@ def _main():
         from tools.research_memory import ResearchMemoryTool
         from tools.browser import BrowserTool
         from tools.discord_feed import DiscordFeedTool
+        from tools.rabbit_hole_bridge import RabbitHoleBridgeTool
 
         _agent.tools.register(PaperReaderTool())
         _agent.tools.register(HuggingFaceTool())
         _agent.tools.register(GitHubTrendingTool())
         _agent.tools.register(ResearchMemoryTool(_get_store()))
         _agent.tools.register(BrowserTool())
+        _agent.tools.register(RabbitHoleBridgeTool())
+        print("[researcher] Rabbit Hole bridge registered")
 
         if os.environ.get("DISCORD_BOT_TOKEN"):
             _agent.tools.register(DiscordFeedTool())

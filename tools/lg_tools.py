@@ -16,9 +16,11 @@ from tools.github_trending import GitHubTrendingTool
 from tools.research_memory import ResearchMemoryTool
 from tools.browser import BrowserTool
 from tools.lab_monitor import LabMonitorTool
+from tools.rabbit_hole_bridge import RabbitHoleBridgeTool
 
 
 # Instantiate underlying tool classes (stateless singletons)
+_rabbit_hole_bridge = RabbitHoleBridgeTool()
 _paper_reader = PaperReaderTool()
 _huggingface = HuggingFaceTool()
 _github_trending = GitHubTrendingTool()
@@ -245,9 +247,37 @@ async def lab_monitor(
     )
 
 
+@tool
+async def rabbit_hole_bridge(
+    action: str,
+    query: str = "",
+    arxiv_id: str = "",
+    model_id: str = "",
+    text: str = "",
+    focus_entity: str = "",
+    paper_ids: Optional[list[str]] = None,
+    model_ids: Optional[list[str]] = None,
+    limit: int = 10,
+) -> str:
+    """Ship research data to rabbit-hole.io's knowledge graph.
+
+    - search_graph: Check what's already in the graph (query required)
+    - ingest_paper: Send a stored paper to the graph (arxiv_id required)
+    - ingest_model: Send a stored model release to the graph (model_id required)
+    - ingest_text: Extract entities from free text and ingest (text required)
+    - ingest_batch: Send multiple papers/models at once (paper_ids and/or model_ids)
+    """
+    return await _rabbit_hole_bridge.execute(
+        action=action, query=query, arxiv_id=arxiv_id, model_id=model_id,
+        text=text, focus_entity=focus_entity, paper_ids=paper_ids,
+        model_ids=model_ids, limit=limit,
+    )
+
+
 def get_all_tools(knowledge_store=None):
     """Get all research tools as LangChain tool objects."""
     tools = [
+        rabbit_hole_bridge,
         paper_reader,
         huggingface,
         github_trending,

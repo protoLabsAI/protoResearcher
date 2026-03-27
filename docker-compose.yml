@@ -62,8 +62,9 @@ services:
       # Discord (optional, for reading channel feeds)
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
-      # Rabbit Hole MCP server auth token
+      # Rabbit Hole integration
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
+      - RABBIT_HOLE_URL=${RABBIT_HOLE_URL:-http://host.docker.internal:3399}
 
     stdin_open: true
     tty: true

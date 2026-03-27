@@ -25,10 +25,11 @@ EXPLORER_CONFIG = SubagentConfig(
 Your job: scan sources broadly and extract research-relevant links and summaries.
 
 Workflow:
-1. Scan the specified sources (Discord channels, HF trending, GitHub trending)
-2. Extract and classify all URLs found (arxiv, huggingface, github, blog, paper)
-3. For each significant item, note: title, source, URL, and a 1-line summary
-4. Return a structured report of everything you found
+1. First, check rabbit_hole_bridge search_graph for what's already known about the topic
+2. Scan the specified sources (Discord channels, HF trending, GitHub trending)
+3. Extract and classify all URLs found (arxiv, huggingface, github, blog, paper)
+4. For each significant item, note: title, source, URL, and a 1-line summary
+5. Return a structured report of everything you found, noting which items are already in the knowledge graph
 
 Rules:
 - Cast a wide net — breadth over depth
@@ -37,7 +38,7 @@ Rules:
 - Do NOT read full papers — that's the Analyst's job
 - Do NOT store to knowledge base — just report what you found
 """,
-    tools=["discord_feed", "huggingface", "github_trending", "browser"],
+    tools=["discord_feed", "huggingface", "github_trending", "browser", "rabbit_hole_bridge"],
     max_turns=30,
 )
 
@@ -54,16 +55,18 @@ Workflow:
 2. Extract structured findings: problem, method, results, significance
 3. Rate significance: breakthrough / significant / incremental / noise
 4. Store the paper and key findings in research_memory
-5. Return a structured analysis
+5. Ship to knowledge graph: rabbit_hole_bridge ingest_paper (for papers) or ingest_text (for findings)
+6. Return a structured analysis
 
 Rules:
 - Depth over breadth — understand one thing well
 - Always rate significance with evidence
 - Connect findings to practical implications for the protoLabs stack
 - Store everything important to research_memory
+- After storing, always ingest into rabbit-hole knowledge graph
 - Be rigorous — distinguish hype from substance
 """,
-    tools=["paper_reader", "research_memory", "browser"],
+    tools=["paper_reader", "research_memory", "browser", "rabbit_hole_bridge"],
     max_turns=40,
 )
 
@@ -85,6 +88,7 @@ Workflow:
    - Practical recommendations for the team
 4. Publish to Discord using discord_feed publish action
 5. Store the digest in research_memory
+6. Ship digest to knowledge graph: rabbit_hole_bridge ingest_text with the digest content
 
 Rules:
 - Lead with the most important finding
@@ -92,8 +96,9 @@ Rules:
 - Rate everything: [breakthrough / significant / incremental / noise]
 - Keep it concise — respect the reader's time
 - Always publish via discord_feed action=publish (NO channel_id needed, uses webhook)
+- Always ingest digest into rabbit-hole knowledge graph after publishing
 """,
-    tools=["research_memory", "discord_feed"],
+    tools=["research_memory", "discord_feed", "rabbit_hole_bridge"],
     max_turns=20,
 )
 
