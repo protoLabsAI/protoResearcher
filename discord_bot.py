@@ -408,11 +408,9 @@ async def _handle_reaction(data: dict, bot_id: str):
 
 async def _handle_message(data: dict, bot_id: str):
     """Handle a message event — respond to @mentions."""
-    # Ignore bot's own messages
+    # Ignore own messages only — allow other bots (protoAgents) to interact
     author = data.get("author", {})
     if author.get("id") == bot_id:
-        return
-    if author.get("bot"):
         return
 
     content = data.get("content", "")
