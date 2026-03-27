@@ -8,7 +8,8 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
-from tools.discord_feed import DiscordFeedTool
+import os
+
 from tools.paper_reader import PaperReaderTool
 from tools.huggingface import HuggingFaceTool
 from tools.github_trending import GitHubTrendingTool
@@ -18,7 +19,6 @@ from tools.lab_monitor import LabMonitorTool
 
 
 # Instantiate underlying tool classes (stateless singletons)
-_discord_feed = DiscordFeedTool()
 _paper_reader = PaperReaderTool()
 _huggingface = HuggingFaceTool()
 _github_trending = GitHubTrendingTool()
@@ -26,32 +26,38 @@ _browser = BrowserTool()
 _lab_monitor = LabMonitorTool()
 
 
-@tool
-async def discord_feed(
-    action: str,
-    channel_id: str = "",
-    guild_id: str = "",
-    limit: int = 50,
-    after: str = "",
-    content: str = "",
-    title: str = "",
-) -> str:
-    """Read Discord channels and publish research digests.
+# Discord tools — only loaded when DISCORD_BOT_TOKEN is set
+_discord_feed_tool = None
+if os.environ.get("DISCORD_BOT_TOKEN"):
+    from tools.discord_feed import DiscordFeedTool
+    _discord_feed_tool = DiscordFeedTool()
 
-    READING (requires channel_id):
-    - scan: Read recent messages and extract classified URLs
-    - history: Get raw message history
-    - channels: List channels in a server (guild_id required)
-    - digest: Scan a channel and produce a structured link digest
+    @tool
+    async def discord_feed(
+        action: str,
+        channel_id: str = "",
+        guild_id: str = "",
+        limit: int = 50,
+        after: str = "",
+        content: str = "",
+        title: str = "",
+    ) -> str:
+        """Read Discord channels and publish research digests.
 
-    PUBLISHING (NO channel_id needed — uses pre-configured webhook):
-    - publish: Post content to #protolabs-research via webhook.
-      Just provide 'content' and optionally 'title'. The webhook is auto-configured.
-    """
-    return await _discord_feed.execute(
-        action=action, channel_id=channel_id, guild_id=guild_id,
-        limit=limit, after=after, content=content, title=title,
-    )
+        READING (requires channel_id):
+        - scan: Read recent messages and extract classified URLs
+        - history: Get raw message history
+        - channels: List channels in a server (guild_id required)
+        - digest: Scan a channel and produce a structured link digest
+
+        PUBLISHING (NO channel_id needed — uses pre-configured webhook):
+        - publish: Post content to #protolabs-research via webhook.
+          Just provide 'content' and optionally 'title'. The webhook is auto-configured.
+        """
+        return await _discord_feed_tool.execute(
+            action=action, channel_id=channel_id, guild_id=guild_id,
+            limit=limit, after=after, content=content, title=title,
+        )
 
 
 @tool
@@ -242,7 +248,6 @@ async def lab_monitor(
 def get_all_tools(knowledge_store=None):
     """Get all research tools as LangChain tool objects."""
     tools = [
-        discord_feed,
         paper_reader,
         huggingface,
         github_trending,
@@ -250,4 +255,6 @@ def get_all_tools(knowledge_store=None):
         lab_monitor,
         create_research_memory_tool(knowledge_store),
     ]
+    if _discord_feed_tool is not None:
+        tools.insert(0, discord_feed)
     return tools
