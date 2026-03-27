@@ -98,29 +98,55 @@ async def _get_channel(channel_id: str) -> dict | None:
     return await _api_request("GET", f"/channels/{channel_id}")
 
 
-async def _get_thread_context(channel_id: str, before_message_id: str, limit: int = 15) -> str:
-    """Fetch recent messages from a thread/channel for conversation context."""
-    data = await _api_request("GET", f"/channels/{channel_id}/messages?before={before_message_id}&limit={limit}")
-    if not data or not isinstance(data, list):
+def _format_message(msg: dict) -> str:
+    """Format a Discord message into a readable context line."""
+    author_name = msg.get("author", {}).get("username", "unknown")
+    is_bot = msg.get("author", {}).get("bot", False)
+    text = msg.get("content", "")
+    # Include embed info (links, titles, descriptions)
+    for embed in msg.get("embeds", []):
+        if embed.get("url"):
+            text += f"\n{embed['url']}"
+        if embed.get("title"):
+            text += f"\n{embed['title']}"
+        if embed.get("description"):
+            text += f"\n{embed['description'][:500]}"
+    # Include attachment URLs (images, files, media)
+    for att in msg.get("attachments", []):
+        if att.get("url"):
+            text += f"\n[attachment: {att.get('filename', 'file')}] {att['url']}"
+    if not text.strip():
         return ""
+    prefix = "🤖 protoResearcher" if is_bot else f"@{author_name}"
+    return f"{prefix}: {text.strip()}"
 
-    # Build context from oldest to newest
+
+async def _get_thread_context(channel_id: str, before_message_id: str, limit: int = 15) -> str:
+    """Fetch the thread starter (OP) + recent messages for conversation context.
+
+    In Discord, a thread's starter message has the same ID as the thread itself.
+    We fetch it separately since the messages endpoint only returns messages
+    *after* the starter.
+    """
     lines = []
-    for msg in reversed(data):
-        author_name = msg.get("author", {}).get("username", "unknown")
-        is_bot = msg.get("author", {}).get("bot", False)
-        text = msg.get("content", "")
-        # Include embed info
-        for embed in msg.get("embeds", []):
-            if embed.get("url"):
-                text += f"\n{embed['url']}"
-            if embed.get("title"):
-                text += f"\n{embed['title']}"
-            if embed.get("description"):
-                text += f"\n{embed['description'][:300]}"
-        if text.strip():
-            prefix = "🤖 protoResearcher" if is_bot else f"@{author_name}"
-            lines.append(f"{prefix}: {text.strip()}")
+
+    # 1. Fetch the thread starter message (OP) — same ID as the thread/channel
+    starter = await _get_message(channel_id, channel_id)
+    if starter:
+        formatted = _format_message(starter)
+        if formatted:
+            lines.append(f"[thread OP] {formatted}")
+
+    # 2. Fetch recent messages in the thread (before the triggering message)
+    data = await _api_request("GET", f"/channels/{channel_id}/messages?before={before_message_id}&limit={limit}")
+    if data and isinstance(data, list):
+        for msg in reversed(data):
+            # Skip the starter if it shows up again
+            if msg.get("id") == channel_id:
+                continue
+            formatted = _format_message(msg)
+            if formatted:
+                lines.append(formatted)
 
     return "\n\n".join(lines)
 
