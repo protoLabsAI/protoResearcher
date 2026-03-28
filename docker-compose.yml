@@ -69,6 +69,10 @@ services:
     stdin_open: true
     tty: true
 
+    networks:
+      - default
+      - gateway
+
     command: ["/opt/protoresearcher/entrypoint.sh"]
 
   # Lab mode — GPU-enabled researcher with training capabilities
@@ -146,6 +150,11 @@ services:
     tty: true
 
     command: ["/opt/protoresearcher/entrypoint.sh"]
+
+networks:
+  gateway:
+    external: true
+    name: gateway_default
 
 volumes:
   protoresearcher-knowledge:
