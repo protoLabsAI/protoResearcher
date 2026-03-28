@@ -1067,6 +1067,48 @@ def _main():
         parts = [m["content"] for m in result if m.get("role") == "assistant" and m.get("content")]
         return {"response": "\n\n".join(parts), "messages": result}
 
+    # OpenAI-compatible chat completions endpoint
+    # Allows protoResearcher to be registered as a model in LiteLLM gateway
+    import time as _time
+
+    @fastapi_app.post("/v1/chat/completions")
+    async def _openai_chat_completions(req: dict):
+        messages = req.get("messages", [])
+        user_msgs = [m for m in messages if m.get("role") == "user"]
+        if not user_msgs:
+            return {"error": "No user message provided"}, 400
+        prompt = user_msgs[-1].get("content", "")
+        session_id = f"openai-compat-{int(_time.time())}"
+
+        result = await chat(prompt, session_id)
+        parts = [m["content"] for m in result if m.get("role") == "assistant" and m.get("content")]
+        content = "\n\n".join(parts)
+
+        return {
+            "id": f"protoresearcher-{session_id}",
+            "object": "chat.completion",
+            "created": int(_time.time()),
+            "model": "protoresearcher",
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }],
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        }
+
+    @fastapi_app.get("/v1/models")
+    async def _openai_models():
+        return {
+            "object": "list",
+            "data": [{
+                "id": "protoresearcher",
+                "object": "model",
+                "created": 1774600000,
+                "owned_by": "protolabs",
+            }],
+        }
+
     # Prometheus /metrics endpoint
     if metrics.is_enabled():
         try:
