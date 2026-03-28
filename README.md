@@ -180,6 +180,51 @@ curl -s http://localhost:7872/api/chat -H "Content-Type: application/json" \
   -d '{"message": "What are the latest developments in MoE architectures?"}'
 ```
 
+## OpenAI-Compatible API
+
+protoResearcher exposes an OpenAI-compatible `/v1/chat/completions` endpoint, allowing any client that speaks the OpenAI protocol to interact with it directly.
+
+### Direct Access
+
+```bash
+curl http://localhost:7872/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "protoresearcher",
+    "messages": [{"role": "user", "content": "What are the latest MoE architecture papers?"}]
+  }'
+```
+
+### Via LiteLLM Gateway
+
+protoResearcher is registered in the protoLabs AI Gateway (LiteLLM proxy on port 4000). This lets you access it alongside cloud models from a single endpoint.
+
+```bash
+curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "protoresearcher", "messages": [{"role": "user", "content": "Run an /agenda scan."}]}'
+```
+
+**Gateway config** (`gateway/config.yaml`):
+
+```yaml
+- model_name: protoresearcher
+  litellm_params:
+    model: openai/protoresearcher
+    api_base: http://protoresearcher:7870/v1
+    api_key: researcher-internal
+```
+
+protoResearcher joins the `gateway_default` Docker network so the proxy resolves `protoresearcher:7870` by container name.
+
+### Model Discovery
+
+```bash
+curl http://localhost:7872/v1/models
+# {"object": "list", "data": [{"id": "protoresearcher", ...}]}
+```
+
 ## Chat Commands
 
 | Command                | Description                       |
