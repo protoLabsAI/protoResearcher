@@ -154,7 +154,7 @@ services:
 networks:
   gateway:
     external: true
-    name: gateway_default
+    name: ai_default
 
 volumes:
   protoresearcher-knowledge:
