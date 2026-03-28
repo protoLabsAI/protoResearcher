@@ -1068,8 +1068,9 @@ def _main():
         return {"response": "\n\n".join(parts), "messages": result}
 
     # OpenAI-compatible chat completions endpoint
-    # Allows protoResearcher to be registered as a model in LiteLLM gateway
+    # Allows protoResearcher to be registered as a model in LiteLLM gateway / OpenWebUI
     import time as _time
+    from fastapi.responses import StreamingResponse as _StreamingResponse
 
     @fastapi_app.post("/v1/chat/completions")
     async def _openai_chat_completions(req: dict):
@@ -1079,15 +1080,45 @@ def _main():
             return {"error": "No user message provided"}, 400
         prompt = user_msgs[-1].get("content", "")
         session_id = f"openai-compat-{int(_time.time())}"
+        stream = req.get("stream", False)
 
         result = await chat(prompt, session_id)
         parts = [m["content"] for m in result if m.get("role") == "assistant" and m.get("content")]
         content = "\n\n".join(parts)
+        created = int(_time.time())
+        completion_id = f"protoresearcher-{session_id}"
+
+        if stream:
+            import json as _json
+            async def _stream():
+                chunk = {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": "protoresearcher",
+                    "choices": [{
+                        "index": 0,
+                        "delta": {"role": "assistant", "content": content},
+                        "finish_reason": None,
+                    }],
+                }
+                yield f"data: {_json.dumps(chunk)}\n\n"
+                done_chunk = {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": "protoresearcher",
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                }
+                yield f"data: {_json.dumps(done_chunk)}\n\n"
+                yield "data: [DONE]\n\n"
+
+            return _StreamingResponse(_stream(), media_type="text/event-stream")
 
         return {
-            "id": f"protoresearcher-{session_id}",
+            "id": completion_id,
             "object": "chat.completion",
-            "created": int(_time.time()),
+            "created": created,
             "model": "protoresearcher",
             "choices": [{
                 "index": 0,
