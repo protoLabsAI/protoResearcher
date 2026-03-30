@@ -1,7 +1,7 @@
 {
   "instance": {
-    "name": "protolabs",
-    "description": "Blackwell inference node — primary research instance"
+    "name": "ava",
+    "description": "A6000 gateway node — secondary research instance"
   },
   "collaboration": {
     "enabled": true,

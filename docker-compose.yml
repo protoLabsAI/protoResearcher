@@ -62,10 +62,10 @@ services:
       # GitHub (optional, for higher API rate limits)
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       # Discord (optional, for reading channel feeds)
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - DISCORD_BOT_TOKEN=${DISCORD_RESEARCH_BOT:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       # Instance identity (for multi-node collaboration)
-      - INSTANCE_NAME=${INSTANCE_NAME:-protolabs}
+      - INSTANCE_NAME=${INSTANCE_NAME:-ava}
       # Rabbit Hole integration
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
       - RABBIT_HOLE_URL=${RABBIT_HOLE_URL:-http://host.docker.internal:3399}
