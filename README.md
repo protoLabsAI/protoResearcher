@@ -9,7 +9,7 @@ Autonomous AI research agent that tracks the latest developments in AI and machi
 - **Monitors HuggingFace** for new models, datasets, and papers
 - **Integrates with [rabbit-hole.io](https://github.com/protoLabsAI/rabbit-hole.io)** — knowledge graph, media ingestion, entity extraction via MCP
 - **Tracks GitHub** trending AI/ML repositories and releases
-- **Stores knowledge** — papers, findings, digests in a semantic knowledge base
+- **Stores knowledge** — papers, findings, digests in a hybrid search knowledge base (vector + BM25)
 - **Generates digests** — structured research summaries with significance ratings
 - **Browses the web** for blog posts, conference pages, and more
 - **Runs experiments** — autonomous GPU training via lab mode (inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch))
@@ -27,7 +27,7 @@ protoResearcher
 │   ├── research_memory.py # Knowledge store tool
 │   ├── lab_bench.py      # GPU experiment runner (lab mode)
 │   └── browser.py        # Web automation
-├── knowledge/            # SQLite + sqlite-vec knowledge base
+├── knowledge/            # SQLite + sqlite-vec + FTS5 hybrid search knowledge base
 ├── lab/                  # Experiment runner + templates
 │   ├── runner.py         # Experiment lifecycle management
 │   └── templates/        # LLaMA-Factory configs for Qwen 0.8B/2B
@@ -225,6 +225,30 @@ curl http://localhost:7872/v1/models
 # {"object": "list", "data": [{"id": "protoresearcher", ...}]}
 ```
 
+## Knowledge Search
+
+The knowledge store uses **hybrid search** — combining vector similarity (nomic-embed-text via Ollama) with BM25 keyword matching (SQLite FTS5), fused via Reciprocal Rank Fusion (RRF).
+
+This dramatically improves retrieval quality compared to vector-only search, catching both semantically similar and keyword-relevant results. Based on experiments in [`protoLabsAI/lab`](https://github.com/protoLabsAI/lab/tree/main/experiments/context-1), hybrid search produces 2.7x more relevant results than keyword-only and eliminates "cannot find" failures on multi-hop queries.
+
+**Search modes** (configurable in `langgraph-config.yaml`):
+- `hybrid` (default) — RRF fusion of vector + keyword results
+- `vector` — semantic similarity only (original behavior)
+- `keyword` — BM25 keyword matching only
+
+**Migration**: If upgrading from a previous version, run the FTS5 backfill to index existing data:
+
+```python
+from knowledge.store import KnowledgeStore
+store = KnowledgeStore()
+store.backfill_fts()  # One-time — populates FTS5 from existing vectors
+```
+
+Or via Docker exec:
+```bash
+docker exec -it protoresearcher python -c "from knowledge.store import KnowledgeStore; KnowledgeStore().backfill_fts()"
+```
+
 ## Chat Commands
 
 | Command                | Description                       |
@@ -318,7 +342,7 @@ Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). W
 - **Agent**: nanobot (tool-calling agent loop, sessions, LiteLLM provider)
 - **LLM**: CLIProxyAPI → Claude Code OAuth (no API key needed) or direct Anthropic API
 - **UI**: Gradio 5 (dark theme, PWA)
-- **Knowledge**: SQLite + sqlite-vec (semantic search via Ollama embeddings)
+- **Knowledge**: SQLite + sqlite-vec + FTS5 (hybrid search: vector similarity + BM25 keyword, RRF fusion)
 - **Training**: LLaMA-Factory with LoRA DPO on Qwen3.5-0.8B/2B
 - **Observability**: Langfuse tracing, Prometheus metrics, JSONL audit
 - **Container**: Docker with seccomp, read-only root, tmpfs workspace

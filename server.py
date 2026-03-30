@@ -341,7 +341,7 @@ async def _handle_papers_command(args: str) -> list[dict[str, Any]]:
     query = args.strip()
 
     if query:
-        results = store.search(query, k=10, filter_table="papers")
+        results = store.hybrid_search(query, k=10, filter_table="papers")
         if not results:
             return _msg(f"No papers found matching '{query}'.")
         lines = [f"**Papers matching '{query}':**"]

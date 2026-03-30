@@ -19,6 +19,8 @@ _EMBED_MODEL = "nomic-embed-text"
 _EMBED_DIM = 768
 _DB_PATH = Path("/sandbox/knowledge/research.db")
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+_CONTENT_PREVIEW_LEN = 1000  # chars stored for search result display
+_RRF_K = 60  # RRF fusion constant
 
 
 class KnowledgeStore:
@@ -95,7 +97,12 @@ class KnowledgeStore:
         )
         db.execute(
             "INSERT INTO knowledge_vec_map (rowid, source_table, source_id, content_preview) VALUES (?, ?, ?, ?)",
-            (cursor.lastrowid, table, str(source_id), text[:200]),
+            (cursor.lastrowid, table, str(source_id), text[:_CONTENT_PREVIEW_LEN]),
+        )
+        # Also populate FTS5 index for keyword search
+        db.execute(
+            "INSERT INTO knowledge_fts (content, source_table, source_id) VALUES (?, ?, ?)",
+            (text[:_CONTENT_PREVIEW_LEN], table, str(source_id)),
         )
         return True
 
@@ -318,6 +325,104 @@ class KnowledgeStore:
                 "distance": distance,
             })
         return results
+
+    # --- Keyword Search (BM25 via FTS5) ---
+
+    def keyword_search(
+        self, query: str, k: int = 10,
+        filter_table: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """BM25 keyword search via FTS5."""
+        db = self._get_db()
+        if db is None:
+            return []
+        try:
+            rows = db.execute(
+                """SELECT source_table, source_id, content, rank
+                   FROM knowledge_fts
+                   WHERE knowledge_fts MATCH ?
+                   ORDER BY rank
+                   LIMIT ?""",
+                (query, k * 2),  # fetch extra for filtering
+            ).fetchall()
+        except Exception:
+            return []
+
+        results = []
+        for table, source_id, content, rank in rows:
+            if filter_table and table != filter_table:
+                continue
+            results.append({
+                "table": table,
+                "source_id": source_id,
+                "preview": content,
+                "distance": 0.0,
+                "bm25_rank": rank,
+            })
+            if len(results) >= k:
+                break
+        return results
+
+    # --- Hybrid Search (RRF fusion of vector + keyword) ---
+
+    def hybrid_search(
+        self, query: str, k: int = 10,
+        filter_table: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Hybrid search: reciprocal rank fusion of vector + BM25 results.
+
+        Combines semantic similarity (vector) with keyword matching (FTS5)
+        using RRF fusion. This finds both semantically similar and
+        keyword-relevant results that either method alone would miss.
+        """
+        vec_results = self.search(query, k=k * 2, filter_table=filter_table)
+        kw_results = self.keyword_search(query, k=k * 2, filter_table=filter_table)
+
+        # RRF scoring: score = sum(1 / (k + rank)) across both lists
+        scores: dict[str, float] = {}
+        result_map: dict[str, dict] = {}
+
+        for rank, r in enumerate(vec_results):
+            key = f"{r['table']}:{r['source_id']}"
+            scores[key] = scores.get(key, 0) + 1.0 / (_RRF_K + rank + 1)
+            result_map[key] = r
+
+        for rank, r in enumerate(kw_results):
+            key = f"{r['table']}:{r['source_id']}"
+            scores[key] = scores.get(key, 0) + 1.0 / (_RRF_K + rank + 1)
+            if key not in result_map:
+                result_map[key] = r
+
+        # Sort by RRF score descending, return top k
+        ranked = sorted(scores.items(), key=lambda x: -x[1])
+        return [result_map[key] for key, _ in ranked[:k]]
+
+    # --- Migration ---
+
+    def backfill_fts(self) -> int:
+        """Backfill FTS5 index from existing knowledge_vec_map data.
+
+        Run once after upgrading to populate FTS5 for existing entries.
+        Safe to call multiple times — clears and rebuilds.
+        """
+        db = self._get_db()
+        if db is None:
+            return 0
+        db.execute("DELETE FROM knowledge_fts")
+        cursor = db.execute(
+            "SELECT source_table, source_id, content_preview FROM knowledge_vec_map"
+        )
+        count = 0
+        for table, source_id, preview in cursor:
+            if preview:
+                db.execute(
+                    "INSERT INTO knowledge_fts (content, source_table, source_id) VALUES (?, ?, ?)",
+                    (preview, table, str(source_id)),
+                )
+                count += 1
+        db.commit()
+        print(f"[knowledge] Backfilled FTS5 index: {count} entries")
+        return count
 
     # --- Stats ---
 

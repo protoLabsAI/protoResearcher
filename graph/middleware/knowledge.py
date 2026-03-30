@@ -11,12 +11,22 @@ from langgraph.prebuilt.chat_agent_executor import AgentState
 
 
 class KnowledgeMiddleware(AgentMiddleware):
-    """Inject knowledge store context before each LLM call."""
+    """Inject knowledge store context before each LLM call.
 
-    def __init__(self, knowledge_store, top_k: int = 5):
+    Uses hybrid search (vector + BM25 keyword via RRF fusion) for better
+    retrieval quality. Falls back to vector-only if FTS5 is unavailable.
+    """
+
+    def __init__(self, knowledge_store, top_k: int = 10, search_mode: str = "hybrid"):
         super().__init__()
         self._store = knowledge_store
         self._top_k = top_k
+        self._search_mode = search_mode
+
+    def _search(self, query: str) -> list[dict]:
+        if self._search_mode == "hybrid" and hasattr(self._store, "hybrid_search"):
+            return self._store.hybrid_search(query, k=self._top_k)
+        return self._store.search(query, k=self._top_k)
 
     def before_model(self, state, runtime) -> dict | None:
         """Query knowledge store with last user message, inject context."""
@@ -34,15 +44,15 @@ class KnowledgeMiddleware(AgentMiddleware):
         if not last_human:
             return None
 
-        # Search knowledge store
-        results = self._store.search(last_human, k=self._top_k)
+        results = self._search(last_human)
         if not results:
             return None
 
-        # Format context
+        # Format context with source info
         context_parts = ["[Relevant knowledge from previous research:]"]
         for r in results:
-            context_parts.append(f"- [{r['table']}] {r['preview']}")
+            preview = r.get("preview", "")[:500]
+            context_parts.append(f"- [{r['table']}:{r['source_id']}] {preview}")
 
         return {"research_context": "\n".join(context_parts)}
 

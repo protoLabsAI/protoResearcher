@@ -81,3 +81,12 @@ CREATE TABLE IF NOT EXISTS sources (
     last_scanned_at TEXT,
     config TEXT                            -- JSON config
 );
+
+-- FTS5 full-text search index for BM25 keyword search (hybrid search)
+-- Populated alongside knowledge_vec at insert time
+CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
+    content,
+    source_table UNINDEXED,
+    source_id UNINDEXED,
+    tokenize='porter unicode61'
+);

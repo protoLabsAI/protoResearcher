@@ -25,11 +25,11 @@ class ResearchMemoryTool(Tool):
     @property
     def description(self) -> str:
         return (
-            "Persistent research knowledge store with semantic search. Actions:\n"
+            "Persistent research knowledge store with hybrid search. Actions:\n"
             "- store_paper: Save a paper with metadata and summary\n"
             "- store_finding: Save a research insight or result\n"
             "- store_digest: Save a research digest/summary\n"
-            "- search: Semantic search across all stored knowledge\n"
+            "- search: Hybrid search (vector + keyword) across all stored knowledge\n"
             "- get_topics: List tracked research topics\n"
             "- add_topic: Add a new research topic to track\n"
             "- stats: Show knowledge base statistics"
@@ -82,6 +82,11 @@ class ResearchMemoryTool(Tool):
                 # search
                 "filter_table": {"type": "string", "description": "Filter search to: papers/findings/digests."},
                 "k": {"type": "integer", "description": "Number of results (default 10)."},
+                "search_mode": {
+                    "type": "string",
+                    "enum": ["hybrid", "vector", "keyword"],
+                    "description": "Search mode: hybrid (default, best quality), vector (semantic only), keyword (BM25 only).",
+                },
             },
             "required": ["action"],
         }
@@ -142,7 +147,13 @@ class ResearchMemoryTool(Tool):
                 return "Error: 'query' is required."
             k = kwargs.get("k", 10)
             filter_table = kwargs.get("filter_table")
-            results = self._store.search(query, k=k, filter_table=filter_table)
+            search_mode = kwargs.get("search_mode", "hybrid")
+            if search_mode == "keyword":
+                results = self._store.keyword_search(query, k=k, filter_table=filter_table)
+            elif search_mode == "vector":
+                results = self._store.search(query, k=k, filter_table=filter_table)
+            else:
+                results = self._store.hybrid_search(query, k=k, filter_table=filter_table)
             if not results:
                 return "No results found."
             lines = []

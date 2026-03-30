@@ -27,7 +27,9 @@ def _build_middleware(config: LangGraphConfig, knowledge_store=None):
 
     if config.knowledge_middleware and knowledge_store:
         middleware.append(KnowledgeMiddleware(
-            knowledge_store, top_k=config.knowledge_top_k,
+            knowledge_store,
+            top_k=config.knowledge_top_k,
+            search_mode=config.knowledge_search_mode,
         ))
 
     if config.audit_middleware:

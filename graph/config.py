@@ -47,7 +47,8 @@ class LangGraphConfig:
     # Knowledge store
     knowledge_db_path: str = "/sandbox/knowledge/research.db"
     embed_model: str = "nomic-embed-text"
-    knowledge_top_k: int = 5
+    knowledge_top_k: int = 10
+    knowledge_search_mode: str = "hybrid"  # hybrid, vector, keyword
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "LangGraphConfig":
@@ -78,6 +79,7 @@ class LangGraphConfig:
             knowledge_db_path=knowledge.get("db_path", cls.knowledge_db_path),
             embed_model=knowledge.get("embed_model", cls.embed_model),
             knowledge_top_k=knowledge.get("top_k", cls.knowledge_top_k),
+            knowledge_search_mode=knowledge.get("search_mode", cls.knowledge_search_mode),
         )
 
         for name in ("explorer", "analyst", "writer"):
