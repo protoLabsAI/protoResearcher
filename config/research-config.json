@@ -1,4 +1,14 @@
 {
+  "instance": {
+    "name": "protolabs",
+    "description": "Blackwell inference node — primary research instance"
+  },
+  "collaboration": {
+    "enabled": true,
+    "channel_id": "1487998245987684523",
+    "share_findings": true,
+    "share_links": true
+  },
   "topics": [
     {"name": "moe-scaling", "keywords": ["mixture of experts", "MoE", "sparse models", "expert routing"], "priority": 1},
     {"name": "quantization", "keywords": ["quantization", "GPTQ", "AWQ", "INT4", "FP8", "model compression"], "priority": 1},
@@ -15,7 +25,8 @@
         "1469054764833701942",
         "1471642542540849284",
         "1469054768675557460",
-        "1469054774338125929"
+        "1469054774338125929",
+        "1487998245987684523"
       ],
       "scan_interval_hours": 24
     },

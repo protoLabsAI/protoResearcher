@@ -28,7 +28,15 @@ TRIGGER_EMOJI = "🔬"
 _CHAT_URL = "http://127.0.0.1:7870/api/chat"
 _DISCORD_API = "https://discord.com/api/v10"
 _BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
+_INSTANCE_NAME = os.environ.get("INSTANCE_NAME", "")
 _MAX_RESPONSE_LENGTH = 1900  # Discord message limit is 2000
+
+
+def _display_name() -> str:
+    """Bot display name including instance identifier."""
+    if _INSTANCE_NAME:
+        return f"protoResearcher [{_INSTANCE_NAME}]"
+    return "protoResearcher"
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +125,7 @@ def _format_message(msg: dict) -> str:
             text += f"\n[attachment: {att.get('filename', 'file')}] {att['url']}"
     if not text.strip():
         return ""
-    prefix = "🤖 protoResearcher" if is_bot else f"@{author_name}"
+    prefix = f"🤖 {_display_name()}" if is_bot else f"@{author_name}"
     return f"{prefix}: {text.strip()}"
 
 
@@ -230,7 +238,8 @@ async def _do_research(channel_id: str, message_id: str, content: str, context: 
         # Step 3: Create a thread on the original message
         # Thread name from first line of content or a truncated version
         first_line = content.split("\n")[0][:80].strip() or "Research"
-        thread = await _create_thread(channel_id, message_id, f"🔬 {first_line}")
+        tag = f" [{_INSTANCE_NAME}]" if _INSTANCE_NAME else ""
+        thread = await _create_thread(channel_id, message_id, f"🔬{tag} {first_line}")
 
         if thread:
             thread_id = thread.get("id")
@@ -315,8 +324,8 @@ async def _run_gateway():
                                 # GUILDS | GUILD_MESSAGES | GUILD_MESSAGE_REACTIONS | MESSAGE_CONTENT
                                 "properties": {
                                     "os": "linux",
-                                    "browser": "protoResearcher",
-                                    "device": "protoResearcher",
+                                    "browser": _display_name(),
+                                    "device": _display_name(),
                                 },
                             },
                         }))

@@ -30,18 +30,21 @@ Categories that score HIGH (70-100):
 - Research papers, arxiv discussions
 - AI agents, tool use, MCP
 - Video/image generation models
+- Questions about the researcher's own capabilities, cron jobs, settings, status
+- Meta-questions about research workflow, tools, topics being tracked
+- Software engineering, DevOps, infrastructure related to AI systems
 
 Categories that score LOW (0-30):
 - Cooking, sports, entertainment, politics
-- General coding unrelated to AI/ML
-- Personal questions, small talk
+- Celebrity gossip, relationship advice
+- Completely unrelated topics with zero tech connection
 
 Respond with ONLY a JSON object like this example: {{"score": 25, "reason": "brief reason"}}
 
 Query: {query}"""
 
 
-async def check_guardrail(query: str, llm_url: str = "http://127.0.0.1:8317/v1", threshold: int = 60) -> dict:
+async def check_guardrail(query: str, llm_url: str = "http://127.0.0.1:8317/v1", threshold: int = 40) -> dict:
     """Check if a query is within AI/ML research scope.
 
     Returns: {"pass": bool, "score": int, "reason": str}
@@ -55,6 +58,9 @@ async def check_guardrail(query: str, llm_url: str = "http://127.0.0.1:8317/v1",
         "transformer", "attention", "lora", "dpo", "rlhf", "benchmark",
         "huggingface", "github", "discord", "scan", "research", "digest",
         "moe", "quantiz", "vllm", "agent", "rag", "embedding",
+        "cron", "schedule", "job", "topic", "status", "tool", "help",
+        "setting", "config", "what do you", "what can you", "your",
+        "publish", "newsletter", "weekly", "lab", "experiment",
     ]
     query_lower = query.lower()
     if any(kw in query_lower for kw in research_keywords):

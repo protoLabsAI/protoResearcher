@@ -63,6 +63,8 @@ services:
       # Discord (optional, for reading channel feeds)
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      # Instance identity (for multi-node collaboration)
+      - INSTANCE_NAME=${INSTANCE_NAME:-protolabs}
       # Rabbit Hole integration
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:-}
       - RABBIT_HOLE_URL=${RABBIT_HOLE_URL:-http://host.docker.internal:3399}
@@ -146,6 +148,7 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - INSTANCE_NAME=${INSTANCE_NAME:-protolabs}
 
     stdin_open: true
     tty: true

@@ -17,7 +17,16 @@ from nanobot.agent.tools.base import Tool
 
 _DISCORD_API = "https://discord.com/api/v10"
 _WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+_INSTANCE_NAME = os.environ.get("INSTANCE_NAME", "")
 _URL_PATTERN = re.compile(r'https?://[^\s<>\[\]()\"\']+')
+
+
+def _webhook_username() -> str:
+    """Build webhook display name, including instance name if set."""
+    if _INSTANCE_NAME:
+        return f"protoResearcher [{_INSTANCE_NAME}]"
+    return "protoResearcher"
+
 
 # URL classification patterns
 _CLASSIFIERS = [
@@ -75,6 +84,10 @@ class DiscordFeedTool(Tool):
             "PUBLISHING (NO channel_id needed — uses pre-configured webhook):\n"
             "- publish: Post content to #protolabs-research via webhook. "
             "Just provide 'content' and optionally 'title'. The webhook is auto-configured.\n\n"
+            "COLLABORATION (multi-instance sharing):\n"
+            "- share: Post a finding or link to the collaboration channel for other "
+            "researcher instances to see. Provide 'content' and optionally 'title'. "
+            "Uses the collaboration channel from research-config.json.\n\n"
             "URLs are classified as: arxiv, huggingface, github, paper, blog, or link."
         )
 
@@ -85,7 +98,7 @@ class DiscordFeedTool(Tool):
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["scan", "history", "channels", "digest", "publish"],
+                    "enum": ["scan", "history", "channels", "digest", "publish", "share"],
                     "description": "Action to perform.",
                 },
                 "channel_id": {
@@ -119,9 +132,11 @@ class DiscordFeedTool(Tool):
     async def execute(self, **kwargs: Any) -> str:
         action = kwargs["action"]
 
-        # Publish doesn't need bot token, just webhook
+        # Publish and share don't need bot token, just webhook
         if action == "publish":
             return await self._publish(kwargs)
+        if action == "share":
+            return await self._share(kwargs)
 
         token = _get_token()
         if not token:
@@ -430,7 +445,7 @@ class DiscordFeedTool(Tool):
                 for batch_start in range(0, len(embeds), 10):
                     batch = embeds[batch_start:batch_start + 10]
                     payload = {
-                        "username": "protoResearcher",
+                        "username": _webhook_username(),
                         "embeds": batch,
                     }
                     resp = await client.post(webhook_url, json=payload)
@@ -441,3 +456,62 @@ class DiscordFeedTool(Tool):
             return f"Error publishing to Discord: {e}"
 
         return f"Published to Discord ({sent} embed{'s' if sent > 1 else ''})."
+
+    async def _share(self, kwargs: dict) -> str:
+        """Share a finding to the collaboration channel via bot message."""
+        token = _get_token()
+        if not token:
+            return "Error: DISCORD_BOT_TOKEN not set. Add it to your environment."
+
+        # Load collaboration channel from research-config.json
+        collab_channel = self._get_collab_channel()
+        if not collab_channel:
+            return "Error: No collaboration channel configured. Set collaboration.channel_id in research-config.json."
+
+        content = kwargs.get("content", "")
+        title = kwargs.get("title", "🔬 Shared Finding")
+
+        if not content:
+            return "Error: 'content' is required for share."
+
+        # Build embed with instance tag
+        instance_tag = f" [{_INSTANCE_NAME}]" if _INSTANCE_NAME else ""
+        embed: dict[str, Any] = {
+            "title": f"{title}{instance_tag}",
+            "description": content[:4096],
+            "color": 0x14b8a6,
+            "footer": {"text": f"via protoResearcher{instance_tag}"},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    f"{_DISCORD_API}/channels/{collab_channel}/messages",
+                    headers={"Authorization": f"Bot {token}"},
+                    json={"embeds": [embed]},
+                )
+                if resp.status_code not in (200, 201):
+                    return f"Error: Discord returned {resp.status_code}: {resp.text[:200]}"
+        except Exception as e:
+            return f"Error sharing to collaboration channel: {e}"
+
+        return f"Shared to collaboration channel {collab_channel}."
+
+    @staticmethod
+    def _get_collab_channel() -> str | None:
+        """Load collaboration channel ID from research-config.json."""
+        import json
+        config_paths = [
+            "/opt/protoresearcher/config/research-config.json",  # Docker
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "research-config.json"),  # local
+        ]
+        for path in config_paths:
+            try:
+                with open(path) as f:
+                    config = json.load(f)
+                collab = config.get("collaboration", {})
+                if collab.get("enabled") and collab.get("channel_id"):
+                    return collab["channel_id"]
+            except (FileNotFoundError, json.JSONDecodeError):
+                continue
+        return None
