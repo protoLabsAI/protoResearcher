@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: protoresearcher
     hostname: sandbox
+    restart: unless-stopped
 
     # NemoClaw-inspired security
     security_opt:
@@ -87,6 +88,7 @@ services:
       target: lab
     container_name: protoresearcher-lab
     hostname: sandbox
+    restart: unless-stopped
     profiles:
       - lab
 
