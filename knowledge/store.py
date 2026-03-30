@@ -21,6 +21,12 @@ _DB_PATH = Path("/sandbox/knowledge/research.db")
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 _CONTENT_PREVIEW_LEN = 1000  # chars stored for search result display
 _RRF_K = 60  # RRF fusion constant
+_CONTEXT_PROMPT = (
+    "Given a document and a chunk from it, write 1-2 sentences of context "
+    "to situate the chunk within the document for search retrieval. "
+    "Answer only with the context, nothing else.\n\n"
+    "Document:\n{document}\n\nChunk:\n{chunk}"
+)
 
 
 class KnowledgeStore:
@@ -31,10 +37,14 @@ class KnowledgeStore:
         db_path: Path = _DB_PATH,
         ollama_url: str = _OLLAMA_URL,
         model: str = _EMBED_MODEL,
+        enrich_chunks: bool = False,
+        enrich_fn=None,
     ):
         self.db_path = db_path
         self.ollama_url = ollama_url
         self.model = model
+        self.enrich_chunks = enrich_chunks
+        self._enrich_fn = enrich_fn  # fn(doc_context: str, chunk: str) -> str
         self._db: sqlite3.Connection | None = None
 
     def _get_db(self) -> sqlite3.Connection | None:
@@ -85,10 +95,36 @@ class KnowledgeStore:
         except Exception:
             return None
 
+    def _contextualize(self, doc_context: str, chunk: str) -> str:
+        """Prepend contextual prefix to chunk for better embeddings.
+
+        Uses the configured enrich_fn (typically an LLM call) to generate
+        a 1-2 sentence context situating the chunk within its document.
+        Falls back to a simple header if no enrich_fn is available.
+        """
+        if self._enrich_fn:
+            try:
+                prefix = self._enrich_fn(doc_context, chunk)
+                if prefix:
+                    return f"{prefix.strip()} {chunk}"
+            except Exception:
+                pass
+        # Fallback: prepend truncated doc context as a simple header
+        if doc_context and len(doc_context) > len(chunk):
+            header = doc_context[:100].split("\n")[0].strip()
+            if header:
+                return f"[{header}] {chunk}"
+        return chunk
+
     def _store_vector(
-        self, db: sqlite3.Connection, text: str, table: str, source_id: str
+        self, db: sqlite3.Connection, text: str, table: str, source_id: str,
+        doc_context: str = "",
     ) -> bool:
-        embedding = self._embed(text)
+        # Apply contextual enrichment before embedding
+        embed_text = text
+        if self.enrich_chunks and doc_context:
+            embed_text = self._contextualize(doc_context, text)
+        embedding = self._embed(embed_text)
         if embedding is None:
             return False
         vec_bytes = struct.pack(f"{len(embedding)}f", *embedding)
@@ -146,7 +182,9 @@ class KnowledgeStore:
         )
         # Embed abstract + summary for search
         embed_text = f"{title}\n{abstract}\n{summary}".strip()
-        self._store_vector(db, embed_text, "papers", arxiv_id)
+        # Full doc context for contextual enrichment
+        doc_context = f"Paper: {title}\nAuthors: {', '.join(authors or [])}\n{abstract}"
+        self._store_vector(db, embed_text, "papers", arxiv_id, doc_context=doc_context)
         db.commit()
         return True
 
@@ -199,7 +237,8 @@ class KnowledgeStore:
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (content, source, source_type, topic, finding_type, significance, now),
         )
-        self._store_vector(db, content, "findings", str(cursor.lastrowid))
+        doc_context = f"Finding ({finding_type}) on topic: {topic or 'general'}. Source: {source or 'unknown'}"
+        self._store_vector(db, content, "findings", str(cursor.lastrowid), doc_context=doc_context)
         db.commit()
         return True
 
@@ -248,7 +287,8 @@ class KnowledgeStore:
                VALUES (?, ?, ?, ?, ?, ?)""",
             (title, content, digest_type, topic, json.dumps(papers_referenced or []), now),
         )
-        self._store_vector(db, f"{title}\n{content[:500]}", "digests", str(cursor.lastrowid))
+        doc_context = f"Research digest ({digest_type}) on topic: {topic or 'general'}"
+        self._store_vector(db, f"{title}\n{content[:500]}", "digests", str(cursor.lastrowid), doc_context=doc_context)
         db.commit()
         return True
 
@@ -288,7 +328,8 @@ class KnowledgeStore:
              license_, downloads, likes, source, released_at, now, notes),
         )
         embed_text = f"{model_id} {name} {description}".strip()
-        self._store_vector(db, embed_text, "model_releases", str(cursor.lastrowid))
+        doc_context = f"Model release: {name} by {organization}. {parameters} params, {architecture}"
+        self._store_vector(db, embed_text, "model_releases", str(cursor.lastrowid), doc_context=doc_context)
         db.commit()
         return True
 

@@ -49,6 +49,7 @@ class LangGraphConfig:
     embed_model: str = "nomic-embed-text"
     knowledge_top_k: int = 10
     knowledge_search_mode: str = "hybrid"  # hybrid, vector, keyword
+    knowledge_enrich_chunks: bool = True  # contextual enrichment at index time
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "LangGraphConfig":
@@ -80,6 +81,7 @@ class LangGraphConfig:
             embed_model=knowledge.get("embed_model", cls.embed_model),
             knowledge_top_k=knowledge.get("top_k", cls.knowledge_top_k),
             knowledge_search_mode=knowledge.get("search_mode", cls.knowledge_search_mode),
+            knowledge_enrich_chunks=knowledge.get("enrich_chunks", cls.knowledge_enrich_chunks),
         )
 
         for name in ("explorer", "analyst", "writer"):

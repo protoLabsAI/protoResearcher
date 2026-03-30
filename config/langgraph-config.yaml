@@ -34,3 +34,4 @@ knowledge:
   embed_model: nomic-embed-text
   top_k: 10
   search_mode: hybrid  # hybrid (vector + keyword RRF), vector, keyword
+  enrich_chunks: true   # prepend contextual headers to chunks before embedding
