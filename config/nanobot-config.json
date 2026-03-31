@@ -3,7 +3,7 @@
     "defaults": {
       "workspace": "/sandbox",
       "model": "openai/claude-sonnet-4-6",
-      "provider": "cliproxy",
+      "provider": "gateway",
       "maxTokens": 4096,
       "contextWindowTokens": 262144,
       "temperature": 0.3,
@@ -16,14 +16,9 @@
     "sendToolHints": true
   },
   "providers": {
-    "cliproxy": {
-      "apiKey": "protoresearcher-internal",
-      "apiBase": "http://127.0.0.1:8317/v1",
-      "extraHeaders": null
-    },
-    "vllm": {
-      "apiKey": "none",
-      "apiBase": "http://host.docker.internal:8000/v1",
+    "gateway": {
+      "apiKey": "${OPENAI_API_KEY}",
+      "apiBase": "http://gateway:4000/v1",
       "extraHeaders": null
     }
   },

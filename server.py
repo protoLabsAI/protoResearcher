@@ -150,13 +150,12 @@ def _make_provider(config):
         if detected:
             model = detected
 
-    # CLIProxyAPI is OpenAI-compatible — tell nanobot/litellm to use openai protocol
+    # Gateway is OpenAI-compatible — tell nanobot/litellm to use openai protocol
     effective_provider = provider_name
     api_key = p.api_key if p else None
-    if provider_name == "cliproxy":
+    if provider_name in ("cliproxy", "gateway"):
         effective_provider = "openai"
-        api_key = api_key or "protoresearcher-internal"
-        # litellm's openai provider needs this env var
+        api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         os.environ["OPENAI_API_KEY"] = api_key
 
     provider = LiteLLMProvider(
@@ -865,7 +864,7 @@ def _build_settings_callbacks() -> dict:
                     detected = _detect_vllm_model("http://host.docker.internal:8000/v1")
                     _graph_config.model_name = detected or model_name
                 elif provider_type == "claude":
-                    _graph_config.model_provider = "cliproxy"
+                    _graph_config.model_provider = "openai"
                     _graph_config.model_name = model_name
                 else:
                     return f"**Error:** Unknown provider: {provider_type}"
@@ -900,8 +899,8 @@ def _build_settings_callbacks() -> dict:
             )
         elif provider_type == "claude":
             provider = LiteLLMProvider(
-                api_key="protoresearcher-internal",
-                api_base="http://127.0.0.1:8317/v1",
+                api_key=os.environ.get("OPENAI_API_KEY", ""),
+                api_base="http://gateway:4000/v1",
                 default_model=f"openai/{model_name}",
                 provider_name="openai",
             )
