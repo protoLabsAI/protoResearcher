@@ -2,10 +2,10 @@
 # Used when AGENT_BACKEND=langgraph
 
 model:
-  provider: cliproxy  # cliproxy (Claude via OAuth) or vllm (local)
-  name: claude-sonnet-4-6
-  api_base: http://127.0.0.1:8317/v1
-  api_key: protoresearcher-internal
+  provider: vllm  # cliproxy (Claude via OAuth) or vllm (local)
+  name: local
+  api_base: http://host.docker.internal:8000/v1
+  api_key: none
   temperature: 0.3
   max_tokens: 4096
   max_iterations: 75
@@ -31,7 +31,7 @@ middleware:
 
 knowledge:
   db_path: /sandbox/knowledge/research.db
-  embed_model: nomic-embed-text
+  embed_model: qwen3-embedding:0.6b
   top_k: 10
   search_mode: hybrid  # hybrid (vector + keyword RRF), vector, keyword
   enrich_chunks: true   # prepend contextual headers to chunks before embedding

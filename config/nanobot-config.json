@@ -2,10 +2,10 @@
   "agents": {
     "defaults": {
       "workspace": "/sandbox",
-      "model": "openai/claude-sonnet-4-6",
-      "provider": "gateway",
+      "model": "openai/local",
+      "provider": "vllm",
       "maxTokens": 4096,
-      "contextWindowTokens": 262144,
+      "contextWindowTokens": 131072,
       "temperature": 0.3,
       "maxToolIterations": 75,
       "reasoningEffort": null
@@ -19,6 +19,11 @@
     "gateway": {
       "apiKey": "${OPENAI_API_KEY}",
       "apiBase": "http://gateway:4000/v1",
+      "extraHeaders": null
+    },
+    "vllm": {
+      "apiKey": "none",
+      "apiBase": "http://host.docker.internal:8000/v1",
       "extraHeaders": null
     }
   },

@@ -14,9 +14,9 @@ from typing import Any
 
 import httpx
 
-_OLLAMA_URL = "http://host.docker.internal:11434"
-_EMBED_MODEL = "nomic-embed-text"
-_EMBED_DIM = 768
+_OLLAMA_URL = "http://100.101.189.45:11434"
+_EMBED_MODEL = "qwen3-embedding:0.6b"
+_EMBED_DIM = 1024
 _DB_PATH = Path("/sandbox/knowledge/research.db")
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 _CONTENT_PREVIEW_LEN = 1000  # chars stored for search result display

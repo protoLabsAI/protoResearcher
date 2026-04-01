@@ -46,7 +46,7 @@ class LangGraphConfig:
 
     # Knowledge store
     knowledge_db_path: str = "/sandbox/knowledge/research.db"
-    embed_model: str = "nomic-embed-text"
+    embed_model: str = "qwen3-embedding:0.6b"
     knowledge_top_k: int = 10
     knowledge_search_mode: str = "hybrid"  # hybrid, vector, keyword
     knowledge_enrich_chunks: bool = True  # contextual enrichment at index time

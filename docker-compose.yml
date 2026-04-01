@@ -33,6 +33,8 @@ services:
       - protoresearcher-cliproxy:/opt/.cliproxy
       # Claude OAuth credentials (read-only)
       - ${HOME}/.claude:/opt/claude-creds:ro
+      # Config (bind-mount for APO prompt optimization)
+      - ./config:/opt/protoresearcher/config:rw
 
     ports:
       - "7872:7870"
