@@ -4,6 +4,7 @@ Uses the GitHub REST API (search endpoint) for repo discovery.
 Unauthenticated: 10 req/min. With GITHUB_TOKEN: 30 req/min.
 """
 
+import asyncio
 import os
 from typing import Any
 
@@ -12,6 +13,8 @@ import httpx
 from nanobot.agent.tools.base import Tool
 
 _GITHUB_API = "https://api.github.com"
+_TIMEOUT = 30
+_MAX_RETRIES = 2
 
 
 class GitHubTrendingTool(Tool):
@@ -84,6 +87,21 @@ class GitHubTrendingTool(Tool):
             headers["Authorization"] = f"Bearer {token}"
         return headers
 
+    async def _api_get(self, url: str, params: dict | None = None) -> httpx.Response:
+        """GET with retry and backoff."""
+        last_err = None
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                    resp = await client.get(url, params=params, headers=self._headers())
+                    resp.raise_for_status()
+                    return resp
+            except Exception as e:
+                last_err = e
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(1 * (attempt + 1))
+        raise last_err  # type: ignore[misc]
+
     async def execute(self, **kwargs: Any) -> str:
         action = kwargs["action"]
         try:
@@ -117,25 +135,22 @@ class GitHubTrendingTool(Tool):
         q_parts.append(f"stars:>={min_stars}")
 
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(
-                    f"{_GITHUB_API}/search/repositories",
-                    params={
-                        "q": " ".join(q_parts),
-                        "sort": sort,
-                        "order": "desc",
-                        "per_page": limit,
-                    },
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            resp = await self._api_get(
+                f"{_GITHUB_API}/search/repositories",
+                params={
+                    "q": " ".join(q_parts),
+                    "sort": sort,
+                    "order": "desc",
+                    "per_page": limit,
+                },
+            )
+            data = resp.json()
         except Exception as e:
-            return f"Error: GitHub API request failed: {e}"
+            return f"Error: GitHub API request failed after {_MAX_RETRIES + 1} attempts: {e}"
 
         repos = data.get("items", [])
         if not repos:
-            return "No repositories found."
+            return "No repositories found matching your GitHub search query."
 
         return self._format_repos(repos)
 
@@ -154,25 +169,22 @@ class GitHubTrendingTool(Tool):
             q_parts.append(f"created:>={created_after}")
 
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(
-                    f"{_GITHUB_API}/search/repositories",
-                    params={
-                        "q": " ".join(q_parts),
-                        "sort": "stars",
-                        "order": "desc",
-                        "per_page": limit,
-                    },
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            resp = await self._api_get(
+                f"{_GITHUB_API}/search/repositories",
+                params={
+                    "q": " ".join(q_parts),
+                    "sort": "stars",
+                    "order": "desc",
+                    "per_page": limit,
+                },
+            )
+            data = resp.json()
         except Exception as e:
-            return f"Error: GitHub API request failed: {e}"
+            return f"Error: GitHub API request failed after {_MAX_RETRIES + 1} attempts: {e}"
 
         repos = data.get("items", [])
         if not repos:
-            return "No recent repositories found."
+            return "No recent repositories found matching your GitHub search."
 
         return self._format_repos(repos)
 
@@ -185,7 +197,7 @@ class GitHubTrendingTool(Tool):
         repos = [r.strip() for r in repos_str.split(",") if r.strip()]
         lines = []
 
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             for repo in repos[:10]:
                 try:
                     resp = await client.get(

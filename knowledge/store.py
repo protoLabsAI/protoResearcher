@@ -1,10 +1,11 @@
 """Knowledge store for protoResearcher — SQLite + sqlite-vec backed.
 
 Stores papers, findings, digests, model releases with semantic search
-via Ollama embeddings and sqlite-vec.
+via embedding server (OpenAI-compatible) and sqlite-vec.
 """
 
 import json
+import os
 import sqlite3
 import struct
 import time
@@ -14,8 +15,9 @@ from typing import Any
 
 import httpx
 
-_OLLAMA_URL = "http://100.101.189.45:11434"
-_EMBED_MODEL = "qwen3-embedding:0.6b"
+_EMBED_URL = os.environ.get("EMBED_URL", "http://localhost:8001")
+_EMBED_MODEL = os.environ.get("EMBED_MODEL", "Qwen/Qwen3-Embedding-0.6B")
+_EMBED_TIMEOUT = 20
 _EMBED_DIM = 1024
 _DB_PATH = Path("/sandbox/knowledge/research.db")
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
@@ -35,13 +37,13 @@ class KnowledgeStore:
     def __init__(
         self,
         db_path: Path = _DB_PATH,
-        ollama_url: str = _OLLAMA_URL,
+        embed_url: str = _EMBED_URL,
         model: str = _EMBED_MODEL,
         enrich_chunks: bool = False,
         enrich_fn=None,
     ):
         self.db_path = db_path
-        self.ollama_url = ollama_url
+        self.embed_url = embed_url
         self.model = model
         self.enrich_chunks = enrich_chunks
         self._enrich_fn = enrich_fn  # fn(doc_context: str, chunk: str) -> str
@@ -86,13 +88,14 @@ class KnowledgeStore:
     def _embed(self, text: str) -> list[float] | None:
         try:
             resp = httpx.post(
-                f"{self.ollama_url}/api/embeddings",
-                json={"model": self.model, "prompt": text[:2000]},
-                timeout=10,
+                f"{self.embed_url}/v1/embeddings",
+                json={"model": self.model, "input": text[:2000]},
+                timeout=_EMBED_TIMEOUT,
             )
             resp.raise_for_status()
-            return resp.json()["embedding"]
-        except Exception:
+            return resp.json()["data"][0]["embedding"]
+        except Exception as e:
+            print(f"[knowledge] Embedding failed: {e}")
             return None
 
     def _contextualize(self, doc_context: str, chunk: str) -> str:
@@ -344,7 +347,9 @@ class KnowledgeStore:
             return []
         embedding = self._embed(query)
         if embedding is None:
-            return []
+            # Fallback to keyword search when embedding service is unavailable
+            print(f"[knowledge] Embedding unavailable, falling back to keyword search")
+            return self.keyword_search(query, k=k, filter_table=filter_table)
         vec_bytes = struct.pack(f"{len(embedding)}f", *embedding)
         rows = db.execute(
             """SELECT m.source_table, m.source_id, m.content_preview, v.distance

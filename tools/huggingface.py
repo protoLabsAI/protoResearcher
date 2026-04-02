@@ -4,6 +4,7 @@ Queries the HF Hub REST API for models, datasets, and papers.
 No API key required for public data.
 """
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -11,6 +12,8 @@ import httpx
 from nanobot.agent.tools.base import Tool
 
 _HF_API = "https://huggingface.co/api"
+_TIMEOUT = 30
+_MAX_RETRIES = 2
 
 
 class HuggingFaceTool(Tool):
@@ -65,6 +68,21 @@ class HuggingFaceTool(Tool):
             "required": ["action"],
         }
 
+    async def _api_get(self, url: str, params: dict | None = None) -> httpx.Response:
+        """GET with retry and backoff."""
+        last_err = None
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                    resp = await client.get(url, params=params)
+                    resp.raise_for_status()
+                    return resp
+            except Exception as e:
+                last_err = e
+                if attempt < _MAX_RETRIES:
+                    await asyncio.sleep(1 * (attempt + 1))
+        raise last_err  # type: ignore[misc]
+
     async def execute(self, **kwargs: Any) -> str:
         action = kwargs["action"]
         try:
@@ -105,15 +123,13 @@ class HuggingFaceTool(Tool):
             params["pipeline_tag"] = filter_task
 
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{_HF_API}/models", params=params)
-                resp.raise_for_status()
-                models = resp.json()
+            resp = await self._api_get(f"{_HF_API}/models", params=params)
+            models = resp.json()
         except Exception as e:
-            return f"Error: HF API request failed: {e}"
+            return f"Error: HF model search failed after {_MAX_RETRIES + 1} attempts: {e}"
 
         if not models:
-            return "No models found."
+            return "No models found matching your HuggingFace search query."
 
         lines = []
         for i, m in enumerate(models, 1):
@@ -149,15 +165,13 @@ class HuggingFaceTool(Tool):
             params["direction"] = "-1"
 
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{_HF_API}/datasets", params=params)
-                resp.raise_for_status()
-                datasets = resp.json()
+            resp = await self._api_get(f"{_HF_API}/datasets", params=params)
+            datasets = resp.json()
         except Exception as e:
-            return f"Error: HF API request failed: {e}"
+            return f"Error: HF dataset search failed after {_MAX_RETRIES + 1} attempts: {e}"
 
         if not datasets:
-            return "No datasets found."
+            return "No datasets found matching your search query."
 
         lines = []
         for i, d in enumerate(datasets, 1):
@@ -174,16 +188,16 @@ class HuggingFaceTool(Tool):
             return "Error: 'model_id' is required."
 
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(
-                    f"https://huggingface.co/{model_id}/raw/main/README.md"
-                )
-                if resp.status_code == 404:
-                    return f"Model card not found for {model_id}."
-                resp.raise_for_status()
-                content = resp.text
-        except Exception as e:
+            resp = await self._api_get(
+                f"https://huggingface.co/{model_id}/raw/main/README.md"
+            )
+            content = resp.text
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return f"Model card not found for {model_id}."
             return f"Error fetching model card: {e}"
+        except Exception as e:
+            return f"Error fetching model card after {_MAX_RETRIES + 1} attempts: {e}"
 
         # Truncate long model cards
         if len(content) > 8000:
@@ -198,18 +212,16 @@ class HuggingFaceTool(Tool):
         limit = min(kwargs.get("limit", 10), 30)
 
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(
-                    f"{_HF_API}/papers/search",
-                    params={"query": query, "limit": limit},
-                )
-                resp.raise_for_status()
-                papers = resp.json()
+            resp = await self._api_get(
+                f"{_HF_API}/papers/search",
+                params={"query": query, "limit": limit},
+            )
+            papers = resp.json()
         except Exception as e:
-            return f"Error: HF papers API failed: {e}"
+            return f"Error: HF papers search failed after {_MAX_RETRIES + 1} attempts: {e}"
 
         if not papers:
-            return "No papers found."
+            return "No papers found matching your search query."
 
         lines = []
         for i, p in enumerate(papers, 1):
